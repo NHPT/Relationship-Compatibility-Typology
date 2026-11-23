@@ -12,7 +12,7 @@ function load() {
       removeItem: key => values.delete(key)
     }
   });
-  const files = ['catalog', ...['needs','bonds','self','meaning','ethics','choices','society','growth'].map(group=>`banks/${group}`), 'model'];
+  const files = ['catalog', ...['needs','bonds','self','meaning','ethics','choices','society','growth','main'].map(group=>`banks/${group}`), 'types', 'profile', 'model'];
   for (const file of files) vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/exploration', file + '.js'), 'utf8'), context);
   return {
     context, values,
@@ -22,7 +22,7 @@ function load() {
     }
   };
 }
-test('48 项和 243 个细项逐一覆盖，八组无遗漏、无重复', () => {
+test('48 项和 255 个细项逐一覆盖，八组无遗漏、无重复', () => {
   const env = load();
   const {topics, groups, banks} = env.run('({topics:EXPLORATION_TOPICS,groups:EXPLORATION_GROUPS,banks:EXPLORATION_BANK})');
   assert.equal(topics.length,48);
@@ -45,7 +45,7 @@ test('48 项和 243 个细项逐一覆盖，八组无遗漏、无重复', () => 
       assert.ok(q.options.every(option=>option.text.length<=32),`${q.id}选项过长`);
     }
   }
-  assert.equal(ids.size,243);
+  assert.equal(ids.size,255);
 });
 test('拒绝未知选项和把跳过冒充选项；跳过与未答分开且均不产生分数', () => {
   const env=load();
@@ -80,7 +80,7 @@ test('完整总览保留 48 项具体证据；相同报告不重复保存；分�
     Object.values(EXPLORATION_BANK).flat().forEach(q=>recordExplorationChoice(draft,q.id,q.options[2].id));`);
   const report=env.run('globalThis.report=buildExplorationReport(draft)');
   assert.equal(report.topicCount,48);
-  assert.equal(report.answered,243);
+  assert.equal(report.answered,255);
   assert.equal(report.skipped,0);
   assert.ok(report.topics.every(topic=>topic.facets.every(facet=>facet.status==='answered')));
   env.run('saveExplorationReport(report)');

@@ -17,9 +17,11 @@ function scoreTest(answers, sceneId) {
   const ids = new Set();
   const totals = {
     style: Object.fromEntries(AXIS_KEYS.map(key => [key, 0])),
+    mode: Object.fromEntries(MODE_KEYS.map(key => [key, 0])),
     behavior: Object.fromEntries(BEHAVIOR_KEYS.map(key => [key, 0])),
     conditions: {},
-    evidence: Object.fromEntries(AXIS_KEYS.map(key => [key, { pos: 0, neg: 0 }]))
+    evidence: Object.fromEntries(AXIS_KEYS.map(key => [key, { pos: 0, neg: 0 }])),
+    modeEvidence: Object.fromEntries(MODE_KEYS.map(key => [key, { pos: 0, neg: 0 }]))
   };
   for (const answer of answers) {
     const q = bank.find(q => q.id === answer?.questionId);
@@ -30,8 +32,8 @@ function scoreTest(answers, sceneId) {
     if (q.kind === 'condition') totals.conditions[q.dimension] = option.value;
     else {
       totals[q.kind][q.dimension] += option.score;
-      if (q.kind === 'style') {
-        totals.evidence[q.dimension][option.score > 0 ? 'pos' : 'neg']++;
+      if (q.kind === 'style' || q.kind === 'mode') {
+        totals[q.kind === 'mode' ? 'modeEvidence' : 'evidence'][q.dimension][option.score > 0 ? 'pos' : 'neg']++;
       }
     }
   }
@@ -40,30 +42,41 @@ function scoreTest(answers, sceneId) {
 
 function typeForProfile(sceneId, profile) {
   const scene = getScene(sceneId);
-  const index = (profile.X === 'pos' ? 4 : 0)
-    + (profile.Y === 'pos' ? 2 : 0) + (profile.M === 'pos' ? 1 : 0);
-  const flexible = AXIS_KEYS.filter(key => profile[key] === 'mid');
+  const keys = axisKeysForScene(sceneId);
+  if (keys.some(key => !['neg', 'pos', 'mid'].includes(profile[key]))) throw new Error('分类方向不完整');
+  const index = keys.reduce((value, key, i) => value + (profile[key] === 'pos' ? 2 ** (keys.length - i - 1) : 0), 0);
+  const flexible = keys.filter(key => profile[key] === 'mid');
+  const flexibleName = flexible.length === keys.length ? scene.flexibleName
+    : [
+      ...keys.filter(key => profile[key] !== 'mid').map(key => scene.axes[key][profile[key]]),
+      `${flexible.map(key => scene.axes[key].name).join('、')}随情境`
+    ].join(' · ') + '（情境取舍）';
+  const fullName = flexible.length ? flexibleName : scene.typeNames[index];
+  const [title, subtitle] = sceneId === 'love' && !flexible.length
+    ? fullName.replace(/模式$/, '').split('·') : [fullName, ''];
   return {
     type: flexible.length
-      ? `${scene.prefix}-${AXIS_KEYS.map(key => ({ neg: 'N', pos: 'P', mid: 'F' })[profile[key]]).join('')}`
-      : `${scene.prefix}${index + 1}`,
-    name: flexible.length
-      ? flexible.length > 1 ? scene.flexibleName : `${scene.axes[flexible[0]].name}·情境弹性型`
-      : scene.typeNames[index],
-    color: flexible.length ? '#65648a' : TYPE_COLORS[index],
-    symbol: flexible.length ? 'balance' : TYPE_SYMBOLS[index],
+      ? `${scene.prefix}-${keys.map(key => ({ neg: 'N', pos: 'P', mid: 'F' })[profile[key]]).join('')}`
+      : `${scene.prefix}${sceneId === 'love' ? String(index + 1).padStart(2, '0') : index + 1}`,
+    name: fullName, title, subtitle,
+    color: flexible.length ? '#65648a' : TYPE_COLORS[index % TYPE_COLORS.length],
+    symbol: flexible.length ? 'balance' : TYPE_SYMBOLS[index % TYPE_SYMBOLS.length],
+    animal: !flexible.length && scene.animals ? scene.animals[index][0] : null,
+    emoji: !flexible.length && scene.animals ? scene.animals[index][1] : null,
     flexible
   };
 }
 
 function classify(totals, sceneId) {
   const scene = getScene(sceneId);
-  const profile = Object.fromEntries(AXIS_KEYS.map(key => [key, side(totals.style[key])]));
+  const keys = axisKeysForScene(sceneId);
+  const mode = sceneId === 'love';
+  const profile = Object.fromEntries(keys.map(key => [key, side(totals[mode ? 'mode' : 'style'][key])]));
   const style = typeForProfile(sceneId, profile);
-  const axes = AXIS_KEYS.map(key => {
-    const val = totals.style[key];
+  const axes = keys.map(key => {
+    const val = totals[mode ? 'mode' : 'style'][key];
     const direction = profile[key];
-    const evidence = totals.evidence[key];
+    const evidence = totals[mode ? 'modeEvidence' : 'evidence'][key];
     return {
       key, ...scene.axes[key], val, direction,
       position: Math.round(val / 6 * 100),
@@ -78,12 +91,9 @@ function classify(totals, sceneId) {
 }
 
 function getTypesForScene(sceneId) {
-  return Array.from({ length: 8 }, (_, index) => {
-    const profile = {
-      X: index & 4 ? 'pos' : 'neg',
-      Y: index & 2 ? 'pos' : 'neg',
-      M: index & 1 ? 'pos' : 'neg'
-    };
+  const keys = axisKeysForScene(sceneId);
+  return Array.from({ length: 2 ** keys.length }, (_, index) => {
+    const profile = Object.fromEntries(keys.map((key, i) => [key, index & 2 ** (keys.length - i - 1) ? 'pos' : 'neg']));
     return { ...typeForProfile(sceneId, profile), profile };
   });
 }
@@ -102,8 +112,21 @@ function getMatchRecommendation(result) {
       flexible: flexible.map(row => row.topic),
       group: !directional.length ? 'open'
         : !different.length ? 'same'
-        : different.length === 3 ? 'different' : 'discuss'
+        : different.length === axisKeysForScene(result.sceneId).length ? 'different' : 'discuss',
+      basis: !directional.length ? '目前没有固定方向，需要按具体情境确认生活安排。' : !different.length
+        ? `本次明确的${same.map(row => `${row.name}（${row.text}）`).join('、')}与这种风格同向，可能减少这些安排上的协调。`
+        : `本次明确的${different.map(row => `${row.name}：你偏向${row.text}，这种风格偏向${row[type.profile[row.key]]}`).join('；')}存在差异，可能需要更多讨论。`,
+      consideration: [
+        '风格不能证明对方是否兑现承诺、尊重边界或接受你的婚恋条件。',
+        flexible.length ? `${flexible.map(row => row.name).join('、')}随情境取舍，不能假定固定偏好。` : ''
+      ].filter(Boolean).join(''),
+      action: (different.length ? different : same).map(row => `确认${row.topic}`).join('；') || '逐项确认共同生活安排'
     };
   });
-  return { candidates, flexible, needs: scene.matchNeeds, calibrated: false };
+  return {
+    candidates, flexible, needs: scene.matchNeeds, calibrated: false,
+    easier: directional.length ? candidates.filter(type => type.same.length === directional.length) : [],
+    harder: directional.length ? candidates.filter(type => type.discuss.length === directional.length) : [],
+    context: result.sceneId, basis: result.sceneId === 'love' ? 'mode_answers_only' : 'style_answers_only'
+  };
 }

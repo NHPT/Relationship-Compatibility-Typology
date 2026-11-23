@@ -1,7 +1,8 @@
-/* 固定覆盖、稳定选项标识。四套题库各 32 题，条件题不参与分数。 */
-const ASSESSMENT_VERSION = 'rct-scenes-2026-11-23-v3';
+/* 当前入口只使用婚恋题库；旧场景定义保留用于识别历史记录。 */
+const ASSESSMENT_VERSION = 'rct-scenes-2026-11-23-v6';
 const SCENE_BANKS = {};
 const AXIS_KEYS = ['X', 'Y', 'M'];
+const MODE_KEYS = ['R', 'S', 'C', 'J'];
 const BEHAVIOR_KEYS = ['D', 'U', 'C', 'B', 'R', 'I', 'J', 'P'];
 
 const BEHAVIORS = {
@@ -18,16 +19,28 @@ const BEHAVIORS = {
 const SCENARIOS = {
   love: {
     id: 'love', prefix: 'L', name: '婚恋伴侣', object: '伴侣', icon: 'heart',
-    desc: '共同生活、亲密空间与家庭安排', accent: '#9d4764',
+    desc: '关系模式、生活方式与具体条件', accent: '#9d4764',
     instruction: '以同一位伴侣为对象；尚无伴侣时，按你在亲密交往中通常会采用的做法回答。',
     axes: {
+      R: { name: '回应起点', neg: '先理解感受', pos: '先处理安排', topic: '倾听感受与处理事情的先后' },
+      S: { name: '联系节奏', neg: '密切联系', pos: '保留空间', topic: '联系频率、回复期待与独立时间' },
+      C: { name: '分歧节奏', neg: '当下讨论', pos: '暂停后复谈', topic: '分歧何时讨论、暂停与重返沟通' },
+      J: { name: '共同安排', neg: '共同参与', pos: '分工自主', topic: '日常安排的共同参与、分工与接口' }
+    },
+    lifestyleAxes: {
       X: { name: '生活节奏', neg: '稳定经营', pos: '共同探索', topic: '生活目标与变化节奏' },
       Y: { name: '陪伴方式', neg: '密切陪伴', pos: '保留空间', topic: '共同时间与独处空间' },
       M: { name: '开支取向', neg: '预算规划', pos: '当前体验', topic: '日常开支与储蓄安排' }
     },
-    typeNames: ['安居共筑·规划型', '安居共筑·体验型', '安居自在·规划型', '安居自在·体验型',
-      '并肩探索·规划型', '并肩探索·体验型', '自在探索·规划型', '自在探索·体验型'],
-    flexibleName: '共同生活·情境弹性型',
+    typeNames: Array.from({ length: 16 }, (_, index) =>
+      `${index & 8 ? '共策' : '共感'}${index & 2 ? '缓谈' : '直谈'}·${index & 4 ? '自在' : '常伴'}${index & 1 ? '分工' : '共议'}模式`),
+    animals: [
+      ['蚂蚁', '🐜'], ['考拉', '🐨'], ['刺猬', '🦔'], ['熊猫', '🐼'],
+      ['骏马', '🐎'], ['燕子', '🐦'], ['驼鹿', '🫎'], ['鹦鹉', '🦜'],
+      ['猫头鹰', '🦉'], ['灰狼', '🐺'], ['家猫', '🐈'], ['狮子', '🦁'],
+      ['水獭', '🦦'], ['蝴蝶', '🦋'], ['梅花鹿', '🦌'], ['白兔', '🐇']
+    ],
+    flexibleName: '婚恋模式·情境取舍',
     focus: '先确认双方婚育、居住、财务与家庭决策安排，再讨论日常相处方式。',
     behaviorContext: '一起生活时',
     matchNeeds: ['愿意直接表达需要，也尊重拒绝与个人空间', '能兑现约定，分歧后愿意重新沟通', '愿意明确婚育、财务和家庭决定的实际安排']
@@ -86,6 +99,13 @@ function styleQuestion(sceneId, suffix, text, options) {
   return makeQuestion(sceneId, suffix, 'style', suffix[0], text,
     options.map((text, i) => ({ text, score: [-2, -1, 1, 2][i] })));
 }
+function modeQuestion(axis, number, text, options) {
+  return makeQuestion('love', `M${axis}${number}`, 'mode', axis, text,
+    options.map((text, index) => ({ text, score: [-2, -1, 1, 2][index] })));
+}
+function axisKeysForScene(sceneId) {
+  return sceneId === 'love' ? MODE_KEYS : AXIS_KEYS;
+}
 function behaviorQuestion(sceneId, suffix, text, options) {
   return makeQuestion(sceneId, suffix, 'behavior', suffix[0], text,
     options.map((text, i) => ({ text, score: [3, 2, 1, 0][i] })));
@@ -120,7 +140,7 @@ function shuffle(items, random = Math.random) {
 function generateTest(sceneId, random = Math.random) {
   getScene(sceneId);
   const bank = SCENE_BANKS[sceneId];
-  if (!bank || bank.length !== 32) throw new Error('场景题库未完整加载');
+  if (!bank || bank.length !== (sceneId === 'love' ? 44 : 32)) throw new Error('场景题库未完整加载');
   // 固定题目覆盖，不把随机变体当等价试卷。仅选项位置随机。
   return bank.map(q => ({ ...q, options: shuffle(q.options, random) }));
 }

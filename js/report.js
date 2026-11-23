@@ -25,13 +25,23 @@ function clearHistory() {
 }
 
 function buildSingleResult(totals, answers, sceneId) {
+  totals = scoreTest(answers, sceneId);
+  answers = SCENE_BANKS[sceneId].map(q => {
+    const answer = answers.find(row => row.questionId === q.id);
+    const option = q.options.find(row => row.id === answer.optionId);
+    return {
+      questionId: q.id, questionText: q.text, kind: q.kind, dimension: q.dimension,
+      optionId: option.id, optionText: option.text,
+      ...(q.kind === 'condition' ? { value: option.value } : { score: option.score })
+    };
+  });
   const scene = getScene(sceneId);
   const c = classify(totals, sceneId);
   const behaviorRows = BEHAVIOR_KEYS.map(key => {
     const val = totals.behavior[key];
     return {
       key, ...BEHAVIORS[key], val, position: Math.round(val / 6 * 100),
-      text: val >= 5 ? '选择中较明确' : val <= 1 ? '较少主动跟进' : '两题做法有差异',
+      text: val >= 5 ? '选择中较明确' : val <= 1 ? '较少主动跟进' : '部分说明与跟进',
       answers: answers.filter(answer => answer.kind === 'behavior' && answer.dimension === key)
         .map(answer => ({ questionText: answer.questionText, optionText: answer.optionText }))
     };
@@ -48,10 +58,10 @@ function buildSingleResult(totals, answers, sceneId) {
     directional.length ? directional.map(row => `${row.name}偏向${row.text}`).join('，') : '',
     flexible.length ? `${flexible.map(row => row.name).join('、')}的回答采用了两侧做法，合计靠近中点` : ''
   ].filter(Boolean).join('；') + '。';
-  return {
+  const result = {
     assessmentVersion: ASSESSMENT_VERSION, measurementStatus: 'exploratory',
     sceneId, sceneName: scene.name,
-    type: c.type, name: c.name, color: c.color, symbol: c.symbol,
+    type: c.type, name: c.name, title: c.title, subtitle: c.subtitle, color: c.color, symbol: c.symbol, animal: c.animal, emoji: c.emoji,
     profile: c.profile, flexible: c.flexible,
     axes: c.axes.map(row => `${row.name}：${row.text}`).join(' · '),
     core,
@@ -62,9 +72,48 @@ function buildSingleResult(totals, answers, sceneId) {
     observation: observationKeys.length
       ? `${observationKeys.join('、')}的两题中较少选择主动说明或跟进。建议核对具体情况；这些观察不覆盖你的风格，也不代表人品或能力结论。`
       : '',
-    axisRows: c.axes, behaviorRows, conditions, totals,
+    axisRows: c.axes.map(row => ({ ...row, answers: answers.filter(answer => answer.kind === (sceneId === 'love' ? 'mode' : 'style') && answer.dimension === row.key) })),
+    lifestyleRows: sceneId === 'love' ? AXIS_KEYS.map(key => ({
+      key, ...scene.lifestyleAxes[key], val: totals.style[key], direction: side(totals.style[key]),
+      text: side(totals.style[key]) === 'mid' ? '随情境取舍' : scene.lifestyleAxes[key][side(totals.style[key])],
+      answers: answers.filter(answer => answer.kind === 'style' && answer.dimension === key)
+    })) : [],
+    personalFoundation: sceneId === 'love' && typeof currentPersonalFoundation === 'function'
+      ? currentPersonalFoundation() : null,
+    behaviorRows, conditions, totals,
     answers: answers.map(answer => ({ ...answer }))
   };
+  const strong = behaviorRows.filter(row => row.val >= 5);
+  const observe = behaviorRows.filter(row => row.val <= 1);
+  const undecided = conditions.filter(row => ['undecided', 'conditional', 'explore'].includes(row.value));
+  result.explanation = {
+    version: 'rct-romance-explanation-v3', context: sceneId,
+    summary: sceneId === 'love'
+      ? '婚恋模式由回应起点、联系节奏、分歧节奏和共同安排四条专项方向生成。个人基础、生活方式、行动观察与具体条件分别保留。'
+      : '风格方向、行为选择与具体条件分别保留。',
+    points: [
+      { label: '已有的行动线索', text: strong.length
+        ? `在${strong.map(row => row.name).join('、')}中，你较多选择了主动说明和跟进。是否实际做到，可用最近的共同生活经历核对。`
+        : '目前没有两题合计达到明确跟进范围的内容，可展开行为回答了解具体做法。' },
+      { label: '值得继续核对', text: observe.length
+        ? `${observe.map(row => row.name).join('、')}中较少选择主动说明和跟进；可先确认当时的限制和后续安排。`
+        : '无论风格是否同向，都需要确认联系、承诺、分担和冲突后的实际做法。' },
+      { label: '需要说清的期待', text: undecided.length
+        ? `${undecided.map(row => `${row.label}：${row.text}`).join('；')}。保留这些条件与未决定状态，不能当作同意或拒绝。`
+        : '本次七项条件已给出具体选择，需要确认对方是否知情、自愿接受，以及怎样落实。' }
+    ],
+    situations: [
+      ['发生分歧', 'C', '暂停、道歉和重新讨论是否有具体时间与做法？'],
+      ['承诺遇到困难', 'R', '什么时候说明变化，谁承担剩余工作？'],
+      ['共同决定失效', 'J', '如何复查决定，并确认各自接下来做什么？'],
+      ['负荷与压力', 'P', '如何说明负荷、安排休息，并避免把压力转给对方？']
+    ].map(([name, key, check]) => ({
+      name, check, answers: behaviorRows.find(row => row.key === key).answers,
+      description: behaviorRows.find(row => row.key === key).answers.map(answer => `你选择“${answer.optionText}”`).join('；') + '。'
+    }))
+  };
+  result.relationshipReferences = getMatchRecommendation(result);
+  return result;
 }
 
 function saveResult(result) {

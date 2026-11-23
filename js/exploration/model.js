@@ -8,9 +8,20 @@ function readExplorationDraft() {
   try {
     const raw = JSON.parse(localStorage.getItem(EX_DRAFT_KEY));
     if (!raw) return emptyExplorationDraft();
-    if (raw.version !== EXPLORATION_VERSION) return { ...emptyExplorationDraft(), incompatible: true };
+    const legacy = raw.version === 'rct-exploration-2026-11-23-v1';
+    if (raw.version !== EXPLORATION_VERSION && !legacy) return { ...emptyExplorationDraft(), incompatible: true };
     if (!raw.answers || typeof raw.answers !== 'object' || Array.isArray(raw.answers)) return emptyExplorationDraft();
-    return { version: raw.version, updatedAt: raw.updatedAt, answers: { ...raw.answers } };
+    const answers = {};
+    Object.values(EXPLORATION_BANK).flat().forEach(question => {
+      if (legacy && PERSONAL_PROBES.some(probe => probe.questionId === question.id)) return;
+      const answer = raw.answers[question.id];
+      if (answer && (answer.skipped === true && answer.optionId === null
+        || answer.skipped !== true && question.options.some(option => option.id === answer.optionId))) {
+        answers[question.id] = { ...answer };
+      }
+    });
+    return { version: EXPLORATION_VERSION, updatedAt: raw.updatedAt, answers,
+      ...(legacy ? { migratedFrom: raw.version } : {}) };
   } catch {
     return emptyExplorationDraft();
   }
@@ -56,7 +67,7 @@ function buildExplorationReport(draft, groupId = null) {
     }))
   }));
   const facets = rows.flatMap(row => row.facets);
-  return {
+  const report = {
     version: EXPLORATION_VERSION,
     resultId: globalThis.crypto?.randomUUID?.() || `ex-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     timestamp: Date.now(), groupId,
@@ -67,6 +78,8 @@ function buildExplorationReport(draft, groupId = null) {
     total: facets.length,
     topicCount: rows.length, topics: rows
   };
+  report.personalProfile = buildPersonalProfile(report);
+  return report;
 }
 function getExplorationReports() {
   try {
@@ -88,6 +101,7 @@ function saveExplorationReport(report) {
   const reports = getExplorationReports();
   // 相同范围、相同具体回答只保留一次快照，不把重复点击当新增样本。
   const same = reports.find(row => row.version === report.version && row.groupId === report.groupId
+    && row.personalProfile?.version === report.personalProfile?.version
     && JSON.stringify(row.topics) === JSON.stringify(report.topics));
   if (same) return true;
   reports.push(report);
@@ -105,4 +119,23 @@ function getExplorationData() {
   let original = null;
   try { original = JSON.parse(localStorage.getItem(EX_DRAFT_KEY)); } catch { /* 损坏记录不冒充有效回答 */ }
   return { version: EXPLORATION_VERSION, draft: original, reports: getExplorationReports() };
+}
+
+function currentPersonalFoundation() {
+  const draft = typeof explorationState !== 'undefined' && explorationState.draft
+    ? explorationState.draft : readExplorationDraft();
+  if (draft.incompatible) return {
+    source: 'current_personal_draft', status: 'incompatible', available: false,
+    title: '个人基础画像尚不可用', summary: '当前个人草稿版本未识别，未参与这份婚恋报告。'
+  };
+  const report = buildExplorationReport(draft);
+  return {
+    source: 'current_personal_draft', sourceVersion: report.version,
+    typeVersion: PERSONAL_TYPE_VERSION, explanationVersion: PERSONAL_EXPLANATION_VERSION,
+    capturedAt: Date.now(), draftUpdatedAt: draft.updatedAt,
+    available: report.answered > 0, status: report.personalProfile.classificationStatus,
+    answered: report.answered, total: report.total,
+    title: report.personalProfile.title, summary: report.personalProfile.summary,
+    profile: report.personalProfile
+  };
 }

@@ -39,7 +39,7 @@ function withAnswers() {
   return env;
 }
 
-test('四套完整题库各自覆盖 3×3 风格、8×2 行为和 7 项条件，标识不重叠', () => {
+test('婚恋 44 题与历史场景 32 题分别完整覆盖，模式标识不与行为冲突', () => {
   const env = environment();
   const banks = env.run('SCENE_BANKS');
   const globalIds = new Set();
@@ -47,7 +47,10 @@ test('四套完整题库各自覆盖 3×3 风格、8×2 行为和 7 项条件，
   assert.deepEqual(sceneIds, ['love', 'friend', 'venture', 'team']);
   sceneIds.forEach(sceneId => {
     const bank = banks[sceneId];
-    assert.equal(bank.length, 32);
+    assert.equal(bank.length, sceneId === 'love' ? 44 : 32);
+    for (const key of ['R', 'S', 'C', 'J']) {
+      assert.equal(bank.filter(q => q.kind === 'mode' && q.dimension === key).length, sceneId === 'love' ? 3 : 0);
+    }
     assert.equal(bank.filter(q => q.kind === 'condition').length, 7);
     for (const key of ['X', 'Y', 'M']) {
       assert.equal(bank.filter(q => q.kind === 'style' && q.dimension === key).length, 3);
@@ -70,10 +73,10 @@ test('四套完整题库各自覆盖 3×3 风格、8×2 行为和 7 项条件，
         assert.equal(new Set(q.options.map(o => o.value)).size, 4);
         assert.ok(q.discussion);
       } else assert.deepEqual(q.options.map(o => o.score),
-        q.kind === 'style' ? [-2, -1, 1, 2] : [3, 2, 1, 0]);
+        ['style', 'mode'].includes(q.kind) ? [-2, -1, 1, 2] : [3, 2, 1, 0]);
     }
   });
-  assert.equal(globalIds.size, 128);
+  assert.equal(globalIds.size, 140);
   // 父母决策和婚育明确条件不能混入其他场景或社交行为分。
   for (const sceneId of ['friend', 'venture', 'team']) {
     assert.ok(banks[sceneId].every(q => !/生育|孩子|父母|伴侣/.test(q.text + q.options.map(o => o.text).join(''))));
@@ -99,30 +102,32 @@ test('随机位置不改变题目覆盖、选项标识或语义分值', () => {
 test('计分拒绝未答、重复、跨场景和未知选项，不接受客户端伪造分值', () => {
   const env = withAnswers();
   assert.throws(() => env.run("scoreTest([], 'love')"), /完成全部/);
-  assert.throws(() => env.run("scoreTest(answersFor('friend'), 'love')"), /题库不一致/);
+  assert.throws(() => env.run("scoreTest(answersFor('love').map((a,i)=>i?a:answersFor('friend')[0]), 'love')"), /题库不一致/);
   assert.throws(() => env.run("scoreTest(answersFor('love').map((a,i,all)=>i===1?all[0]:a), 'love')"), /题库不一致/);
   assert.throws(() => env.run("scoreTest(answersFor('love').map((a,i)=>i? a:{...a,optionId:'fake'}), 'love')"), /题库不一致/);
   assert.deepEqual(env.run("scoreTest(answersFor('love').map(a=>({...a,score:999,value:'fake'})), 'love')"),
     env.run("scoreTest(answersFor('love'), 'love')"));
 });
 
-test('四场景的八个方向原型全部可达，推荐始终留在本场景且包含同型', () => {
+test('婚恋十六模式与历史场景八个原型全部可达，参考包含同型', () => {
   const env = withAnswers();
   for (const sceneId of ['love', 'friend', 'venture', 'team']) {
     const scene = env.run(`SCENARIOS.${sceneId}`);
-    for (let i = 0; i < 8; i++) {
+    const count = sceneId === 'love' ? 16 : 8;
+    for (let i = 0; i < count; i++) {
       const result = env.run(`(() => {
-        const profile = {X:${i & 4 ? '2' : '-2'}, Y:${i & 2 ? '2' : '-2'}, M:${i & 1 ? '2' : '-2'}};
-        const a = answersFor('${sceneId}', q => q.kind==='style'
+        const profile = {X:${i & 4 ? '2' : '-2'}, Y:${i & 2 ? '2' : '-2'}, M:${i & 1 ? '2' : '-2'},
+          R:${i & 8 ? '2' : '-2'},S:${i & 4 ? '2' : '-2'},C:${i & 2 ? '2' : '-2'},J:${i & 1 ? '2' : '-2'}};
+        const a = answersFor('${sceneId}', q => ['style','mode'].includes(q.kind)
           ? q.options.find(o=>o.score===profile[q.dimension]) : q.options[0]);
         const r = buildSingleResult(scoreTest(a,'${sceneId}'),a,'${sceneId}');
         return {r, reco:getMatchRecommendation(r)};
       })()`);
-      assert.equal(result.r.type, `${scene.prefix}${i + 1}`);
+      assert.equal(result.r.type, `${scene.prefix}${sceneId === 'love' ? String(i + 1).padStart(2, '0') : i + 1}`);
       assert.equal(result.r.flexible.length, 0);
       assert.equal(result.r.behaviorRows.length, 8);
       assert.equal(result.r.conditions.length, 7);
-      assert.equal(result.reco.candidates.length, 8);
+      assert.equal(result.reco.candidates.length, count);
       assert.equal(result.reco.candidates.filter(c => c.group === 'same').length, 1);
       assert.equal(result.reco.candidates.find(c => c.group === 'same').type, result.r.type);
       assert.equal(result.reco.candidates.filter(c => c.group === 'different').length, 1);
@@ -131,18 +136,18 @@ test('四场景的八个方向原型全部可达，推荐始终留在本场景�
   }
 });
 
-test('净分中点保留三轴画像、双向证据、行为和条件，不退化为 SWING 空报告', () => {
+test('净分中点保留四轴画像、双向证据、行为和条件，不退化为空报告', () => {
   const env = withAnswers();
   const result = env.run(`(() => {
-    const counts={X:0,Y:0,M:0};
-    const a=answersFor('love',q=>q.kind==='style'
+    const counts={R:0,S:0,C:0,J:0};
+    const a=answersFor('love',q=>q.kind==='mode'
       ? q.options.find(o=>o.score===(counts[q.dimension]++===0 ? -2 : 1))
       :q.options[0]);
     const r=buildSingleResult(scoreTest(a,'love'),a,'love');
     return {r,reco:getMatchRecommendation(r)};
   })()`);
-  assert.equal(result.r.type, 'L-FFF');
-  assert.equal(result.r.axisRows.length, 3);
+  assert.equal(result.r.type, 'L-FFFF');
+  assert.equal(result.r.axisRows.length, 4);
   result.r.axisRows.forEach(row => {
     assert.equal(row.position, 0);
     assert.equal(row.evidence.pos, 2);
@@ -151,8 +156,8 @@ test('净分中点保留三轴画像、双向证据、行为和条件，不退�
   });
   assert.equal(result.r.conditions.length, 7);
   assert.equal(result.r.behaviorRows.length, 8);
-  assert.ok(result.r.name.includes('情境弹性'));
-  assert.equal(result.reco.candidates.filter(c => c.group === 'open').length, 8);
+  assert.ok(result.r.name.includes('情境取舍'));
+  assert.equal(result.reco.candidates.filter(c => c.group === 'open').length, 16);
   assert.equal(result.reco.needs.length, 3);
   assert.doesNotMatch(JSON.stringify(result), /倾向不明确|倾向未明确|SWING|高兼容/);
   assert.deepEqual(env.run('[-2,-1,0,1,2].map(side)'), ['neg', 'mid', 'mid', 'mid', 'pos']);
@@ -165,6 +170,7 @@ test('条件选择彼此独立，改生育或家庭安排不改变风格、行�
     return [scoreTest(a,'love'),scoreTest(b,'love')];
   })()`);
   assert.deepEqual(result[0].style, result[1].style);
+  assert.deepEqual(result[0].mode, result[1].mode);
   assert.deepEqual(result[0].behavior, result[1].behavior);
   assert.equal(result[0].conditions.children, 'yes');
   assert.equal(result[1].conditions.children, 'no');

@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="RCT：婚恋、朋友、创业、团队四套关系题库；另有涵盖人生、价值、家庭、欲望、忠诚和道德选择的48项自我探索。">
+  <meta name="description" content="RCT：个人测评与婚恋测评。从48项主题的实际回答梳理个人特征，了解相处中的共同点、差异和具体约定。">
   <title>RCT 关系适配类型学</title>
-  <link rel="stylesheet" href="css/style.css?v=20261123-exploration-v1">
+  <link rel="stylesheet" href="css/style.css?v=20261123-structure-v2">
 </head>
 <body>
   <div class="app">
@@ -20,22 +20,15 @@
             <p class="sub">Relationship Compatibility Typology</p>
           </div>
         </div>
-        <p class="lead">你希望怎样相处，又通常怎样回应别人？从婚恋、朋友、创业或团队场景出发，梳理你的相处风格、行为选择与具体期待，了解与他人相处时值得确认的共同点、差异和约定。</p>
+        <p class="lead">认识自己的生活取向、具体选择与情境差异，也了解亲密关系中的相处方式。个人测评梳理基础画像，婚恋测评进一步确认关系模式、日常选择与具体期待。</p>
       </header>
 
-      <p class="entry-label">选择你这次想了解的相处场景</p>
+      <p class="entry-label">选择本次测评</p>
       <div class="mode-cards" id="scene-entries"></div>
-      <div class="home-history"><button type="button" id="btn-history" class="btn btn-ghost">查看历史记录<span id="history-count"></span></button><span class="muted">每套 32 题 · 选后确认 · 可返回修改</span></div>
-
-      <div class="exploration-entry">
-        <span class="entry-label">进一步了解自己</span>
-        <h2>人生与人性探索</h2>
-        <p>人生观、价值观、家庭与婚姻，以及面对欲望、利益、恐惧和道德冲突时的选择。</p>
-        <div class="ex-group-bottom"><span class="muted">48 项主题 · 8 组题库 · 分组完成与续答</span><button type="button" id="btn-exploration" class="btn">选择探索主题 →</button></div>
-      </div>
+      <div class="home-history"><button type="button" id="btn-history" class="btn btn-ghost">查看婚恋历史<span id="history-count"></span></button><span class="muted">个人测评可分组续答 · 记录仅存当前浏览器</span></div>
 
       <div class="home-foot">
-        <p class="muted">这是个人作答画像。当前题库与适配规则仍待真人研究验证，不能直接判断另一人的倾向、关系结局或工作能力。记录仅存于当前浏览器。</p>
+        <p class="muted">个人主型只概括三个生活取向，不代表完整人格。当前题库与相处参考仍待真人研究验证，不能直接判断另一人的倾向、关系结局或工作能力。记录仅存于当前浏览器。</p>
       </div>
     </section>
 
@@ -46,7 +39,7 @@
       <div class="quiz-top">
         <div class="quiz-meta">
           <span id="quiz-sub">选择自己通常采用的做法</span>
-          <span id="quiz-progress">第 1 / 32 题</span>
+          <span id="quiz-progress">第 1 / 44 题</span>
         </div>
         <div class="quiz-timer" id="quiz-timer">60s</div>
       </div>
@@ -69,6 +62,7 @@
           <div>
             <div class="result-code" id="result-code"></div>
             <h2 id="result-type"></h2>
+            <p id="result-subtype" class="result-subtype"></p>
             <p class="result-axes" id="result-axes"></p>
           </div>
         </div>
@@ -81,10 +75,15 @@
           <div class="kv"><span class="k">行为线索</span><span id="result-strength"></span></div>
           <div class="kv"><span class="k">场景重点</span><span id="result-risk"></span></div>
         </div>
+        <div id="result-explanation"></div>
 
-        <h3 class="sec-title">相处风格 · 三条方向轴</h3>
-        <p class="dim-explainer muted">每轴三题，位置表示本次选择的合计方向。两端都可以有合理做法，不代表优劣或人群排名。</p>
+        <div id="result-foundation"></div>
+        <h3 class="sec-title">婚恋模式 · 四条专项方向</h3>
+        <p class="dim-explainer muted">每轴三题，位置表示本次选择的合计方向。展开可看题目依据；两端不代表优劣或人群排名。</p>
         <div id="result-dims" class="dims"></div>
+        <h3 class="sec-title">生活方式 · 独立保留</h3>
+        <p class="dim-explainer muted">生活节奏、陪伴和开支取向用于讨论日常安排，不参与婚恋模式分类。</p>
+        <div id="result-lifestyle"></div>
 
         <h3 class="sec-title">行为观察 · 八项回答分布</h3>
         <p class="dim-explainer muted">每项两题，按选项中主动说明、协商与跟进的行动计 0–6 分。图形只展示本次回答，不是能力评分或适配概率，面积没有综合意义。</p>
@@ -143,7 +142,7 @@
     <section id="page-history" class="page">
       <div class="result-card">
         <h2 class="sec-title">历史记录</h2>
-        <label class="oc-field history-filter"><span>查看场景</span><select id="history-scene"><option value="all">全部场景</option><option value="love">婚恋伴侣</option><option value="friend">朋友相处</option><option value="venture">创业合伙</option><option value="team">团队协作</option><option value="legacy">旧版通用测评</option></select></label>
+        <label class="oc-field history-filter"><span>查看记录</span><select id="history-scene"><option value="all">全部记录</option><option value="love">婚恋测评</option><option value="legacy">其他旧版记录</option></select></label>
         <div id="history-list"></div>
         <div class="actions">
           <button id="btn-export-json" class="btn btn-ghost">导出 JSON</button>
@@ -154,18 +153,22 @@
     </section>
 
     <section id="page-exploration" class="page">
-      <div class="quiz-scene-line"><strong>人生与人性探索</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
+      <div class="quiz-scene-line"><strong>个人测评</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
       <h2 class="ex-heading">从你在意的主题开始</h2>
-      <p class="ex-intro">每组包含 6 项主题，约 30 题，不必一次做完。结果逐项梳理你的回答，并给出反思问题。涉及亲密、信仰或生命的内容可以跳过。</p>
+      <p class="ex-intro">每组包含 6 项主题，共 30–36 题，可分组续答。三个生活方向形成生活取向主型，不代表完整人格；48 项主题中的具体特征与情境选择分别解释。涉及亲密、信仰或生命的内容可以跳过。</p>
       <p id="ex-total" class="ex-total"></p>
       <p id="ex-hub-storage" class="storage-note muted" role="status"></p>
       <div id="ex-groups" class="ex-groups"></div>
+      <details class="explanation-rules personal-library">
+        <summary>认识本版 8 种生活取向主型</summary>
+        <div id="ex-type-library"></div>
+      </details>
       <div class="actions">
-        <button type="button" id="ex-overview" class="btn">查看 48 项总览</button>
+        <button type="button" id="ex-overview" class="btn">查看个人综合画像</button>
         <button type="button" id="ex-export-data" class="btn btn-ghost">导出探索记录</button>
         <button type="button" id="ex-clear" class="btn btn-ghost">清空探索记录</button>
       </div>
-      <h3 class="sec-title ex-history-title">已保存的探索报告</h3>
+      <h3 class="sec-title ex-history-title">已保存的个人报告</h3>
       <div id="ex-snapshots"></div>
       <p class="quiz-hint muted">这 48 项是内容主题，存在交叉。题库尚未经过真人效度研究，回答用于自我梳理，不用于判断人品或预测行为。记录仅存当前浏览器。</p>
     </section>
@@ -189,11 +192,12 @@
 
     <section id="page-exploration-result" class="page">
       <div class="result-card">
-        <div class="quiz-scene-line"><strong>人生与人性探索 · 回答梳理</strong><button type="button" class="text-btn" data-ex-hub>返回主题页</button></div>
+        <div class="quiz-scene-line"><strong>个人测评 · 本次画像</strong><button type="button" class="text-btn" data-ex-hub>返回主题页</button></div>
         <h2 id="ex-report-title" class="ex-heading"></h2>
         <p id="ex-report-meta" class="ex-total"></p>
-        <p class="ex-intro">展开主题，查看你在每个情境中的选择与反思提示。你可以用真实经历核对回答，也可以回看修改。跳过与未答均保留原状态。</p>
-        <p class="profile-note">本结果记录的是你此刻报告的选择。实际行为还受处境、资源和关系影响；不生成忠诚度、人品分或心理诊断。</p>
+        <div id="ex-profile"></div>
+        <h3 class="sec-title report-section-title">逐项回答 · 完整依据</h3>
+        <p class="ex-intro">展开主题查看题目与实际选择，可用真实经历核对。跳过和未答保留原状态。</p>
         <div id="ex-report-topics"></div>
         <p id="ex-report-storage" class="storage-note muted" role="status"></p>
         <div class="actions">
@@ -205,24 +209,24 @@
     </section>
   </div>
 
-  <script src="js/questionBank.js?v=20261123-exploration-v1"></script>
-  <script src="js/banks/love.js?v=20261123-exploration-v1"></script>
-  <script src="js/banks/friend.js?v=20261123-exploration-v1"></script>
-  <script src="js/banks/venture.js?v=20261123-exploration-v1"></script>
-  <script src="js/banks/team.js?v=20261123-exploration-v1"></script>
-  <script src="js/scoring.js?v=20261123-exploration-v1"></script>
-  <script src="js/report.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/catalog.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/banks/needs.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/banks/bonds.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/banks/self.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/banks/meaning.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/banks/ethics.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/banks/choices.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/banks/society.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/banks/growth.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/model.js?v=20261123-exploration-v1"></script>
-  <script src="js/app.js?v=20261123-exploration-v1"></script>
-  <script src="js/exploration/app.js?v=20261123-exploration-v1"></script>
+  <script src="js/questionBank.js?v=20261123-structure-v2"></script>
+  <script src="js/banks/love.js?v=20261123-structure-v2"></script>
+  <script src="js/scoring.js?v=20261123-structure-v2"></script>
+  <script src="js/report.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/catalog.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/banks/needs.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/banks/bonds.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/banks/self.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/banks/meaning.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/banks/ethics.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/banks/choices.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/banks/society.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/banks/growth.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/banks/main.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/types.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/profile.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/model.js?v=20261123-structure-v2"></script>
+  <script src="js/app.js?v=20261123-structure-v2"></script>
+  <script src="js/exploration/app.js?v=20261123-structure-v2"></script>
 </body>
 </html>

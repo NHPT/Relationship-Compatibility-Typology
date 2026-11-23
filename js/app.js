@@ -36,12 +36,19 @@ function show(pageId) {
 }
 
 function initHome() {
-  el('scene-entries').innerHTML = Object.values(SCENARIOS).map(scene => `
+  el('scene-entries').innerHTML = `
+    <button type="button" class="mode-card" id="btn-exploration" style="--scene-color:var(--green-strong)">
+      <span class="mode-icon">${icon('leaf')}</span>
+      <span class="mode-title">个人测评</span>
+      <span class="mode-desc">8 种生活取向、特征与情境选择</span>
+      <span class="mode-count">48 项主题 · 255 题 · 分组完成 <span aria-hidden="true">↗</span></span>
+    </button>
+  ` + [SCENARIOS.love].map(scene => `
     <button type="button" class="mode-card" data-scene="${scene.id}" style="--scene-color:${scene.accent}">
       <span class="mode-icon">${icon(scene.icon)}</span>
-      <span class="mode-title">${scene.name}</span>
+      <span class="mode-title">婚恋测评</span>
       <span class="mode-desc">${scene.desc}</span>
-      <span class="mode-count">32 题 <span aria-hidden="true">↗</span></span>
+      <span class="mode-count">16 种模式 · 44 题 <span aria-hidden="true">↗</span></span>
     </button>
   `).join('');
   document.querySelectorAll('[data-scene]').forEach(button => {
@@ -59,6 +66,7 @@ function initHome() {
 }
 
 function startTest(sceneId) {
+  if (sceneId !== 'love') return show('home');
   const scene = getScene(sceneId);
   state.sceneId = sceneId;
   state.questions = generateTest(sceneId);
@@ -177,16 +185,25 @@ function renderSingleResult(result, saved = true) {
   const scene = getScene(result.sceneId);
   el('result-card').style.setProperty('--type-color', result.color);
   el('result-scene').textContent = `${scene.name} · 本次相处画像`;
-  el('result-type').textContent = result.name;
-  el('result-code').textContent = result.type;
-  el('result-symbol').innerHTML = icon(result.symbol);
+  el('result-type').textContent = result.title || result.name;
+  el('result-subtype').textContent = result.subtitle ? `${result.subtitle}模式` : '';
+  el('result-code').textContent = result.type + (result.animal ? ` · ${result.animal}` : '');
+  if (result.emoji) el('result-symbol').textContent = result.emoji;
+  else el('result-symbol').innerHTML = icon(result.symbol);
   el('result-axes').textContent = result.axes;
   el('result-core').textContent = result.core;
   el('result-strength').textContent = result.strength;
   el('result-risk').textContent = result.risk;
+  el('result-card').querySelector('.result-grid').classList.toggle('hidden', Boolean(result.explanation));
+  renderRomanceExplanation(result);
+  renderRomanceFoundation(result.personalFoundation);
+  el('result-lifestyle').innerHTML = (result.lifestyleRows || []).map(row => `<article class="feature-row">
+    <div class="feature-heading"><h4>${esc(row.name)}</h4><span>${esc(row.text)}</span></div>
+    ${renderAnswerEvidence(row.answers, '查看生活方式回答')}
+  </article>`).join('');
   el('result-flex').classList.toggle('hidden', !result.flexible.length);
   el('result-flex').textContent = result.flexible.length
-    ? '情境弹性表示这些题里采用了两侧做法，合计靠近中点。下方保留具体方向与选择次数，不将它当成无结果，也不推断你有更强适应能力。' : '';
+    ? '部分方向采用了两侧做法，合计靠近中点。下方保留已明确方向与具体选择，不强行归入固定模式，也不据此推断适应能力。' : '';
   el('result-warn').classList.toggle('hidden', !result.observation);
   el('result-warn').textContent = result.observation;
   el('result-storage').textContent = saved ? '已保存在当前浏览器' : '当前浏览器无法保存记录；本次结果仍可查看，请导出本次画像。';
@@ -198,6 +215,7 @@ function renderSingleResult(result, saved = true) {
       </div>
       <div class="dim-endpoints"><span>${esc(row.neg)}</span><span>${esc(row.pos)}</span></div>
       <p class="axis-evidence muted">${esc(row.explanation)}</p>
+      ${renderAnswerEvidence(row.answers || [], '查看这条方向的回答依据')}
     </div>
   `).join('');
   renderRadar(result.behaviorRows);
@@ -223,7 +241,7 @@ function renderSingleResult(result, saved = true) {
   el('oc-saved').classList.add('hidden');
   el('oc-partner').innerHTML = '<option value="">不知道或尚未测试</option>'
     + getTypesForScene(result.sceneId).map(type => `<option value="${type.type}">${esc(type.type)} ${esc(type.name)}</option>`).join('')
-    + `<option value="${scene.prefix}-flexible">情境弹性型（结合对方完整画像）</option>`;
+    + `<option value="${scene.prefix}-flexible">存在情境取舍（结合对方完整画像）</option>`;
   el('btn-again').onclick = () => startTest(result.sceneId);
   updateHistoryBadge();
 }
@@ -251,31 +269,73 @@ function renderRadar(rows) {
 }
 
 function renderMatchRecommendation(result) {
-  const reco = getMatchRecommendation(result);
-  const groups = [
-    ['same', '风格同向'], ['discuss', '差异协商'],
-    ['different', '三轴差异'], ['open', '可讨论的风格']
-  ];
+  const reco = result.relationshipReferences;
+  if (!reco) {
+    el('result-match').innerHTML = '<p class="muted">这份旧报告没有保存当时的相处参考，保留原始回答。</p>';
+    return;
+  }
+  const reference = type => `<article class="relationship-reference">
+    <span class="match-chip" style="--chip-color:${type.color}">${esc(type.emoji || '')} ${esc(type.type)} ${esc(type.name)}${type.animal ? ` · ${esc(type.animal)}` : ''}</span>
+    <p><span class="reference-label">依据</span>${esc(type.basis)}</p>
+    <p><span class="reference-label">留意</span>${esc(type.consideration)}</p>
+    <p><span class="reference-label">可以先谈</span>${esc(type.action)}</p>
+  </article>`;
   el('result-match').innerHTML = `
-    <h3 class="sec-title">适配参考</h3>
-    <p class="muted">可以优先了解具备下列实际做法的人，再核对双方的具体条件。单人画像无法确认对方是否具备这些做法。</p>
+    <h3 class="sec-title report-section-title">婚恋相处参考</h3>
+    <p class="muted">以下依据本次四条婚恋模式方向。相近偏好可减少部分协调，不保证关系结果；实际行为、婚育和财务等条件仍需双方确认。</p>
     <ul class="match-needs">${reco.needs.map(text => `<li>${esc(text)}</li>`).join('')}</ul>
-    <details class="candidate-details"><summary>查看本场景的 8 种风格参考</summary>
-      <p class="match-note muted">以下只比较三条风格轴。同向不保证适配，差异也不等于冲突；行为和明确条件需要分别核对。</p>
-      ${reco.flexible.length ? `<p class="match-note muted">${esc(reco.flexible.map(row => row.name).join('、'))}在本次呈现情境取舍，不用单一方向排列这些候选。</p>` : ''}
-      ${groups.map(([key, label]) => {
-        const candidates = reco.candidates.filter(type => type.group === key);
-        if (!candidates.length) return '';
-        return `<div class="match-group"><span class="match-label ${key}">${label}</span><ul class="match-types">${candidates.map(type => {
+    <h4 class="reference-heading">更容易形成默契的类型</h4>
+    ${reco.easier.length ? reco.easier.map(reference).join('')
+      : '<p class="empty-explanation">四条方向都随情境取舍，目前无法选出同向模式。可先从具体需要和安排谈起。</p>'}
+    <h4 class="reference-heading">需要更多磨合的类型</h4>
+    ${reco.harder.length ? reco.harder.map(reference).join('')
+      : '<p class="empty-explanation">目前没有足够明确的方向来排列差异类型，逐项确认需要与安排更有帮助。</p>'}
+    <details class="candidate-details"><summary>查看本版 16 种婚恋模式</summary>
+      <p class="match-note muted">同向不保证适配，差异也不等于冲突。中点方向不参与排列。名称与动物只作识别，联系节奏不用于判断感情深浅。</p>
+      <ul class="match-types">${reco.candidates.map(type => {
           const reasons = [
             ...(type.same.length ? [`同向：${type.same.join('、')}`] : []),
             ...(type.discuss.length ? [`需协商：${type.discuss.join('、')}`] : []),
             ...(type.flexible.length ? [`按情境讨论：${type.flexible.join('、')}`] : [])
           ];
-          return `<li class="match-candidate"><span class="match-chip" style="--chip-color:${type.color}">${esc(type.type)} ${esc(type.name)}</span><p class="muted">${esc(reasons.join('；'))}</p></li>`;
-        }).join('')}</ul></div>`;
-      }).join('')}
+           return `<li class="match-candidate"><strong>${esc(type.emoji || '')} ${esc(type.type)} ${esc(type.name)}${type.animal ? ` · ${esc(type.animal)}` : ''}</strong><p class="muted">${esc(reasons.join('；'))}</p></li>`;
+         }).join('')}</ul>
     </details>`;
+}
+
+function renderAnswerEvidence(answers, label = '查看回答依据') {
+  if (!answers.length) return '';
+  return `<details class="explanation-evidence"><summary>${esc(label)} · ${answers.length} 题</summary>
+    ${answers.map(answer => `<p class="answer-evidence"><span>${esc(answer.questionText)}</span><strong>你的选择：${esc(answer.optionText || answer.text)}</strong></p>`).join('')}
+  </details>`;
+}
+
+function renderRomanceExplanation(result) {
+  const explanation = result.explanation;
+  el('result-explanation').innerHTML = explanation ? `
+    <h3 class="sec-title report-section-title">这份画像怎样理解</h3>
+    <p class="ex-intro">${esc(explanation.summary)}</p>
+    <div class="profile-lines">${explanation.points.map(row => `<div><span class="reference-label">${esc(row.label)}</span><p>${esc(row.text)}</p></div>`).join('')}</div>
+    <h3 class="sec-title report-section-title">具体情境中的选择</h3>
+    ${explanation.situations.map(row => `<div class="situation-row"><strong>${esc(row.name)}</strong><p>${esc(row.description)}</p>
+      <p class="muted">${esc(row.check)}</p>${renderAnswerEvidence(row.answers)}</div>`).join('')}
+  ` : '';
+}
+
+function renderRomanceFoundation(foundation) {
+  const profile = foundation?.profile;
+  el('result-foundation').innerHTML = `
+    <h3 class="sec-title report-section-title">个人基础画像</h3>
+    ${profile ? `<p><strong>${esc(profile.primaryTypes.length ? profile.title : '个人主型尚未确定')}</strong></p>
+      <p class="muted">${esc(profile.summary)}</p>
+      ${renderPersonalAxes(profile.taxonomy)}
+      ${profile.repeated.length ? `<p>已有特征：${profile.repeated.map(row => esc(row.label)).join('、')}。</p>` : ''}
+      <details class="explanation-evidence"><summary>查看基础画像的来源与证据</summary>
+        <p class="muted">来自生成本报告时的个人草稿 · 已答 ${foundation.answered} / ${foundation.total} 题。${esc(foundation.sourceVersion)} · ${esc(foundation.typeVersion)}</p>
+        ${profile.repeated.map(row => `<p>${esc(row.label)}</p>${renderAnswerEvidence(row.supporting)}`).join('')}
+      </details>`
+      : `<p class="muted">${esc(foundation?.summary || '尚无可用的个人基础画像。')}</p>`}
+    <p class="profile-note">基础画像随本报告保存为快照。婚恋模式由婚恋专项回答独立生成；个人主型未确定也可以查看婚恋结果。</p>`;
 }
 
 function showHistory() {
@@ -285,8 +345,8 @@ function showHistory() {
 function renderHistory() {
   const history = getHistory();
   const filter = el('history-scene').value;
-  const filtered = history.filter(row => filter === 'all' || row.sceneId === filter || (filter === 'legacy' && !row.sceneId));
-  const summaries = Object.values(SCENARIOS).map(scene => {
+  const filtered = history.filter(row => filter === 'all' || row.sceneId === filter || (filter === 'legacy' && row.sceneId !== 'love'));
+  const summaries = [SCENARIOS.love].map(scene => {
     const group = filtered.filter(row => row.sceneId === scene.id && row.assessmentVersion === ASSESSMENT_VERSION);
     const agg = aggregate(group);
     return agg ? `<p>${esc(scene.name)} ${agg.times} 次 · ${esc(agg.text)}</p>` : '';
@@ -294,8 +354,8 @@ function renderHistory() {
   el('history-list').innerHTML = `
     ${summaries ? `<div class="history-summary">${summaries}<p class="muted">不同场景与规则版本分开记录；分类重复不等于准确。</p></div>` : ''}
     ${filtered.length ? filtered.slice().reverse().map(row => {
-      const current = row.assessmentVersion === ASSESSMENT_VERSION && SCENARIOS[row.sceneId]
-        && row.axisRows?.length === 3 && row.behaviorRows?.length === 8 && row.conditions?.length === 7;
+       const current = row.assessmentVersion === ASSESSMENT_VERSION && row.sceneId === 'love'
+        && row.axisRows?.length === 4 && row.behaviorRows?.length === 8 && row.conditions?.length === 7;
       const time = Number.isFinite(row.timestamp) ? new Date(row.timestamp).toLocaleString('zh-CN') : '时间未记录';
       return `<div class="history-item"><div><span class="h-scene">${esc(row.sceneName || '旧版通用测评')}</span><span class="h-type">${esc(row.name || row.type || '旧版记录')}（${esc(row.type || '—')}）</span><span class="h-time">${esc(time)}</span></div>
         ${current ? `<button type="button" class="btn btn-ghost" data-result-id="${esc(row.resultId)}">查看画像</button>` : '<span class="muted">保留旧版记录</span>'}</div>`;

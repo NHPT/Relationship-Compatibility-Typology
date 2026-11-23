@@ -96,7 +96,7 @@ async function completeGroup(page, groupId, touch, skipFirst = false) {
     if (!process.env.RCT_EX_CONTINUE) {
     await page.screenshot({ path: path.join(output, 'desktop-hub.png'), fullPage: true, animations: 'disabled' });
     await page.locator('#ex-overview').click();
-    assert.ok((await page.locator('#ex-report-meta').textContent()).includes('未答 243 题'));
+    assert.ok((await page.locator('#ex-report-meta').textContent()).includes('未答 255 题'));
     assert.equal(await page.locator('.ex-topic-report').count(), 48);
     await page.locator('#page-exploration-result [data-ex-hub]').first().click();
     await page.locator('[data-ex-group="needs"]').click();
@@ -128,8 +128,8 @@ async function completeGroup(page, groupId, touch, skipFirst = false) {
     const partialReport = await downloadJSON(page, '#ex-export-report', 'partial-report.json');
     assert.equal(partialReport.answered, 1);
     assert.equal(partialReport.skipped, 1);
-    assert.equal(partialReport.total - partialReport.answered - partialReport.skipped, 241);
-    check('draft reload, back edit, skip and partial export', { answered: 1, skipped: 1, pending: 241 });
+    assert.equal(partialReport.total - partialReport.answered - partialReport.skipped, 253);
+    check('draft reload, back edit, skip and partial export', { answered: 1, skipped: 1, pending: 253 });
     await page.locator('#page-exploration-result [data-ex-hub]').first().click();
     page.once('dialog', dialog => dialog.accept());
     await page.locator('#ex-clear').click();
@@ -138,7 +138,7 @@ async function completeGroup(page, groupId, touch, skipFirst = false) {
     await page.locator('#ex-overview').click();
     const full = await downloadJSON(page, '#ex-export-report', 'full-48-report.json');
     assert.equal(full.topicCount, 48);
-    assert.equal(full.answered, 243);
+    assert.equal(full.answered, 255);
     assert.ok(full.topics.every(topic => topic.facets.every(facet => facet.status === 'answered')));
     assert.equal(full.score, undefined);
     await page.locator('.ex-topic-report > summary').first().click();
@@ -148,7 +148,7 @@ async function completeGroup(page, groupId, touch, skipFirst = false) {
     await choose(page, 0);
     await page.locator('#page-exploration-quiz [data-ex-hub]').click();
     // 修改草稿不会改写已经保存的报告。
-    const oldFull = await page.evaluate(() => getExplorationReports().find(report => !report.groupId && report.answered === 243));
+    const oldFull = await page.evaluate(() => getExplorationReports().find(report => !report.groupId && report.answered === 255));
     assert.deepEqual(oldFull.topics, full.topics);
     await page.locator('[data-ex-snapshot]').first().click();
     assert.ok((await page.locator('#ex-report-meta').textContent()).includes('历史报告'));
@@ -157,7 +157,7 @@ async function completeGroup(page, groupId, touch, skipFirst = false) {
     assert.equal(await page.locator('#history-list .history-item').count(), 0);
     assert.equal(requests.length, 0);
     assert.deepEqual(errors, []);
-    check('48 topic overview, immutable snapshots, separate histories, no upload', { answered: 243, submittedRequests: 0 });
+    check('48 topic overview, immutable snapshots, separate histories, no upload', { answered: 255, submittedRequests: 0 });
     } else {
       evidence.push(...JSON.parse(fs.readFileSync(path.join(output, 'evidence.json'), 'utf8')));
       const full = JSON.parse(fs.readFileSync(path.join(output, 'full-48-report.json'), 'utf8'));
@@ -179,7 +179,7 @@ async function completeGroup(page, groupId, touch, skipFirst = false) {
       await page.locator('#btn-history').click();
       assert.equal(await page.locator('#history-list .history-item').count(), 0);
       assert.equal(requests.length, 0);
-      check('48 topic overview, immutable snapshots, separate histories, no upload', { answered: 243, submittedRequests: 0 });
+      check('48 topic overview, immutable snapshots, separate histories, no upload', { answered: 255, submittedRequests: 0 });
     }
     await context.close();
 
