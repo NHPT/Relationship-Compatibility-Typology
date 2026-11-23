@@ -1,5 +1,5 @@
 /* 固定覆盖、稳定选项标识。四套题库各 32 题，条件题不参与分数。 */
-const ASSESSMENT_VERSION = 'rct-scenes-2026-11-23-v2';
+const ASSESSMENT_VERSION = 'rct-scenes-2026-11-23-v3';
 const SCENE_BANKS = {};
 const AXIS_KEYS = ['X', 'Y', 'M'];
 const BEHAVIOR_KEYS = ['D', 'U', 'C', 'B', 'R', 'I', 'J', 'P'];

@@ -7,7 +7,7 @@ try { playwright = require('playwright'); }
 catch { playwright = require('../.git/rct-ui/node_modules/playwright'); }
 const { chromium } = playwright;
 const base = process.env.RCT_URL || 'http://localhost:8090/';
-const output = path.resolve(__dirname, '../.git/rct-validation');
+const output = path.resolve(process.env.RCT_ARTIFACT_DIR || path.join(__dirname, '../.git/rct-validation'));
 fs.mkdirSync(output, { recursive: true });
 const evidence = [];
 function check(name, facts) { evidence.push({ name, ...facts }); }

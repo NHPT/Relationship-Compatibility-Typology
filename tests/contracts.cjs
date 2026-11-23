@@ -63,6 +63,8 @@ test('四套完整题库各自覆盖 3×3 风格、8×2 行为和 7 项条件，
       assert.equal(new Set(q.options.map(o => o.id)).size, 4);
       assert.equal(new Set(q.options.map(o => o.text)).size, 4);
       assert.ok(q.text.length > 8);
+      assert.ok(q.text.length <= 45, `${q.id}题干应简短`);
+      assert.ok(q.options.every(o => o.text.length <= 32), `${q.id}选项应简短`);
       if (q.kind === 'condition') {
         assert.ok(q.options.every(o => typeof o.value === 'string' && o.score === undefined));
         assert.equal(new Set(q.options.map(o => o.value)).size, 4);
@@ -180,7 +182,7 @@ test('低行为观察不覆盖风格，安全暂停且约定重谈不被计成�
   assert.ok(result.behaviorRows.every(row => row.val === 0 && row.position === 0));
   const q = env.run("SCENE_BANKS.team.find(q=>q.id==='team-C1')");
   assert.equal(q.options[0].score, 3);
-  assert.match(q.options[0].text, /暂停.*重开时间/);
+  assert.match(q.options[0].text, /暂停.*何时继续谈/);
 });
 
 test('旧记录保留，历史不跨场景或规则合并，反馈更新且不虚构对方', () => {

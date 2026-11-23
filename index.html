@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="RCT：分别从婚恋、朋友、创业和团队场景，梳理你的相处风格、行为选择与具体期待，形成个人画像和适配协商参考。">
+  <meta name="description" content="RCT：婚恋、朋友、创业、团队四套关系题库；另有涵盖人生、价值、家庭、欲望、忠诚和道德选择的48项自我探索。">
   <title>RCT 关系适配类型学</title>
-  <link rel="stylesheet" href="css/style.css?v=20261123-scenes-v2">
+  <link rel="stylesheet" href="css/style.css?v=20261123-exploration-v1">
 </head>
 <body>
   <div class="app">
@@ -26,6 +26,13 @@
       <p class="entry-label">选择你这次想了解的相处场景</p>
       <div class="mode-cards" id="scene-entries"></div>
       <div class="home-history"><button type="button" id="btn-history" class="btn btn-ghost">查看历史记录<span id="history-count"></span></button><span class="muted">每套 32 题 · 选后确认 · 可返回修改</span></div>
+
+      <div class="exploration-entry">
+        <span class="entry-label">进一步了解自己</span>
+        <h2>人生与人性探索</h2>
+        <p>人生观、价值观、家庭与婚姻，以及面对欲望、利益、恐惧和道德冲突时的选择。</p>
+        <div class="ex-group-bottom"><span class="muted">48 项主题 · 8 组题库 · 分组完成与续答</span><button type="button" id="btn-exploration" class="btn">选择探索主题 →</button></div>
+      </div>
 
       <div class="home-foot">
         <p class="muted">这是个人作答画像。当前题库与适配规则仍待真人研究验证，不能直接判断另一人的倾向、关系结局或工作能力。记录仅存于当前浏览器。</p>
@@ -146,15 +153,76 @@
       </div>
     </section>
 
+    <section id="page-exploration" class="page">
+      <div class="quiz-scene-line"><strong>人生与人性探索</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
+      <h2 class="ex-heading">从你在意的主题开始</h2>
+      <p class="ex-intro">每组包含 6 项主题，约 30 题，不必一次做完。结果逐项梳理你的回答，并给出反思问题。涉及亲密、信仰或生命的内容可以跳过。</p>
+      <p id="ex-total" class="ex-total"></p>
+      <p id="ex-hub-storage" class="storage-note muted" role="status"></p>
+      <div id="ex-groups" class="ex-groups"></div>
+      <div class="actions">
+        <button type="button" id="ex-overview" class="btn">查看 48 项总览</button>
+        <button type="button" id="ex-export-data" class="btn btn-ghost">导出探索记录</button>
+        <button type="button" id="ex-clear" class="btn btn-ghost">清空探索记录</button>
+      </div>
+      <h3 class="sec-title ex-history-title">已保存的探索报告</h3>
+      <div id="ex-snapshots"></div>
+      <p class="quiz-hint muted">这 48 项是内容主题，存在交叉。题库尚未经过真人效度研究，回答用于自我梳理，不用于判断人品或预测行为。记录仅存当前浏览器。</p>
+    </section>
+
+    <section id="page-exploration-quiz" class="page">
+      <div class="quiz-scene-line"><strong id="ex-quiz-group"></strong><button type="button" class="text-btn" data-ex-hub>返回主题页</button></div>
+      <p id="ex-quiz-hint" class="quiz-context muted"></p>
+      <div class="quiz-top"><span id="ex-topic" class="ex-topic-label"></span><span id="ex-quiz-progress" class="muted"></span></div>
+      <div class="progress-track"><div id="ex-progress-bar" class="progress-bar"></div></div>
+      <div class="quiz-body">
+        <h2 id="ex-text" class="quiz-text" tabindex="-1"></h2>
+        <div id="ex-options" class="options" role="group" aria-labelledby="ex-text"></div>
+        <div class="quiz-actions ex-quiz-actions">
+          <button type="button" id="ex-prev" class="btn btn-ghost">上一题</button>
+          <button type="button" id="ex-skip" class="btn btn-ghost">跳过本题</button>
+          <button type="button" id="ex-next" class="btn" disabled>下一题</button>
+        </div>
+        <p id="ex-quiz-storage" class="quiz-hint muted" role="status"></p>
+      </div>
+    </section>
+
+    <section id="page-exploration-result" class="page">
+      <div class="result-card">
+        <div class="quiz-scene-line"><strong>人生与人性探索 · 回答梳理</strong><button type="button" class="text-btn" data-ex-hub>返回主题页</button></div>
+        <h2 id="ex-report-title" class="ex-heading"></h2>
+        <p id="ex-report-meta" class="ex-total"></p>
+        <p class="ex-intro">展开主题，查看你在每个情境中的选择与反思提示。你可以用真实经历核对回答，也可以回看修改。跳过与未答均保留原状态。</p>
+        <p class="profile-note">本结果记录的是你此刻报告的选择。实际行为还受处境、资源和关系影响；不生成忠诚度、人品分或心理诊断。</p>
+        <div id="ex-report-topics"></div>
+        <p id="ex-report-storage" class="storage-note muted" role="status"></p>
+        <div class="actions">
+          <button type="button" id="ex-export-report" class="btn">导出本次报告</button>
+          <button type="button" class="btn btn-ghost" data-ex-hub>继续其他主题</button>
+          <button type="button" class="btn btn-ghost" data-home>返回首页</button>
+        </div>
+      </div>
+    </section>
   </div>
 
-  <script src="js/questionBank.js?v=20261123-scenes-v2"></script>
-  <script src="js/banks/love.js?v=20261123-scenes-v2"></script>
-  <script src="js/banks/friend.js?v=20261123-scenes-v2"></script>
-  <script src="js/banks/venture.js?v=20261123-scenes-v2"></script>
-  <script src="js/banks/team.js?v=20261123-scenes-v2"></script>
-  <script src="js/scoring.js?v=20261123-scenes-v2"></script>
-  <script src="js/report.js?v=20261123-scenes-v2"></script>
-  <script src="js/app.js?v=20261123-scenes-v2"></script>
+  <script src="js/questionBank.js?v=20261123-exploration-v1"></script>
+  <script src="js/banks/love.js?v=20261123-exploration-v1"></script>
+  <script src="js/banks/friend.js?v=20261123-exploration-v1"></script>
+  <script src="js/banks/venture.js?v=20261123-exploration-v1"></script>
+  <script src="js/banks/team.js?v=20261123-exploration-v1"></script>
+  <script src="js/scoring.js?v=20261123-exploration-v1"></script>
+  <script src="js/report.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/catalog.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/banks/needs.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/banks/bonds.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/banks/self.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/banks/meaning.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/banks/ethics.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/banks/choices.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/banks/society.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/banks/growth.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/model.js?v=20261123-exploration-v1"></script>
+  <script src="js/app.js?v=20261123-exploration-v1"></script>
+  <script src="js/exploration/app.js?v=20261123-exploration-v1"></script>
 </body>
 </html>

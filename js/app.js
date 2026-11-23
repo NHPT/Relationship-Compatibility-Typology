@@ -341,7 +341,8 @@ function bindOutcomeAndExport() {
     if (currentResult) exportJSON(currentResult, `rct-${currentResult.sceneId}-profile.json`);
   });
   el('btn-export-json').addEventListener('click', () => {
-    exportJSON({ assessmentVersion: ASSESSMENT_VERSION, history: getHistory(), outcomes: getOutcomes() }, 'rct-data.json');
+    exportJSON({ assessmentVersion: ASSESSMENT_VERSION, history: getHistory(), outcomes: getOutcomes(),
+      exploration: getExplorationData() }, 'rct-data.json');
   });
   el('btn-export-csv').addEventListener('click', () => {
     const rows = getOutcomes();

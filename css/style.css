@@ -167,6 +167,41 @@ button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-v
 .h-time { color: var(--muted); font-size: 11px; margin-top: 4px; }
 .history-item .btn { flex-shrink: 0; font-size: 12px; padding: 10px 12px; }
 #btn-clear-history { margin-top: 20px; }
+.exploration-entry { margin-top: 32px; padding: 24px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.exploration-entry h2 { font-size: 22px; margin: 6px 0 10px; }
+.exploration-entry > p { font-size: 14px; line-height: 1.8; max-width: 560px; }
+.exploration-entry .ex-group-bottom { margin-top: 20px; }
+.ex-heading { font-size: 24px; line-height: 1.5; margin: 24px 0 12px; }
+.ex-intro { color: var(--muted); font-size: 14px; line-height: 1.8; margin-bottom: 20px; }
+.ex-total { font-size: 13px; color: var(--green-strong); }
+.ex-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+.ex-group { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; min-width: 0; }
+.ex-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.ex-group-head h3 { font-size: 16px; color: var(--scene-color); font-weight: 600; }
+.ex-group-head > span { flex-shrink: 0; font-size: 11px; color: var(--muted); }
+.ex-group > p { font-size: 12px; line-height: 1.9; }
+.ex-group-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+.ex-group-bottom .muted { font-size: 12px; }
+.ex-group-bottom .btn { padding: 10px 12px; font-size: 12px; }
+.ex-history-title { margin-top: 36px; }
+.ex-topic-label { font-size: 13px; color: var(--green-strong); }
+#ex-quiz-progress { flex-shrink: 0; font-size: 12px; }
+.ex-quiz-actions { flex-wrap: wrap; }
+.ex-quiz-actions .btn { min-width: 0; }
+.ex-topic-report { border-bottom: 1px solid var(--line); }
+.ex-topic-report > summary { display: flex; align-items: flex-start; gap: 12px; justify-content: space-between; list-style: none; cursor: pointer; padding: 20px 0; }
+.ex-topic-report > summary::before { content: "+"; color: var(--muted); }
+.ex-topic-report[open] > summary::before { content: "−"; }
+.ex-topic-report > summary > span:first-of-type { flex: 1; min-width: 0; }
+.ex-topic-report summary strong { font-size: 15px; font-weight: 600; }
+.ex-topic-preview { display: block; font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.8; }
+.ex-topic-count { flex-shrink: 0; color: var(--muted); font-size: 11px; padding-top: 3px; }
+.ex-topic-body { padding-bottom: 20px; }
+.ex-reflection { background: var(--bg); padding: 12px 14px; font-size: 13px; line-height: 1.8; border-radius: 8px; margin-bottom: 18px; }
+.ex-facet { padding-left: 12px; border-left: 2px solid var(--line); margin-bottom: 20px; }
+.ex-facet-label { font-size: 11px; color: var(--green-strong); }
+.ex-facet p { font-size: 12px; color: var(--muted); margin: 4px 0; }
+.ex-facet strong { display: block; font-size: 14px; font-weight: 500; line-height: 1.8; }
 @media (max-width: 520px) {
   .app { padding: 24px 16px 48px; }
   .result-card { padding: 20px 16px; }
@@ -184,6 +219,10 @@ button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-v
   .behavior-row summary { gap: 7px; font-size: 12px; }
   .behavior-level { font-size: 11px; }
   .radar text { font-size: 13px; }
+  .ex-groups { grid-template-columns: 1fr; }
+  .ex-heading { font-size: 21px; }
+  .ex-topic-count { font-size: 10px; }
+  .ex-quiz-actions .btn { font-size: 13px; padding: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .page.active { animation: none; }
