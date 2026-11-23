@@ -83,6 +83,41 @@
 
         <div id="result-stability" class="stability hidden"></div>
 
+        <div class="outcome-box">
+          <h3 class="sec-title">研究反馈（可选）</h3>
+          <p class="muted">为校准系统，可填写你与某人的真实相处结局（仅存本地，可导出）。</p>
+          <div class="outcome-form">
+            <label class="oc-field"><span>关系类型</span>
+              <select id="oc-relation">
+                <option value="婚恋">婚恋伴侣</option>
+                <option value="创业">搭伙创业</option>
+                <option value="伙伴">长期伙伴</option>
+                <option value="团队">团队协作</option>
+              </select>
+            </label>
+            <label class="oc-field"><span>相处时长</span>
+              <select id="oc-duration">
+                <option value="short">&lt;6 个月</option>
+                <option value="mid">6 个月–2 年</option>
+                <option value="long">2 年以上</option>
+              </select>
+            </label>
+            <label class="oc-field"><span>关系状态</span>
+              <select id="oc-status">
+                <option value="good">稳定和谐</option>
+                <option value="ok">一般</option>
+                <option value="bad">矛盾较多</option>
+                <option value="ended">已结束</option>
+              </select>
+            </label>
+            <label class="oc-field"><span>对方类型</span>
+              <select id="oc-partner"></select>
+            </label>
+            <button id="btn-save-outcome" class="btn btn-ghost">保存反馈</button>
+            <span id="oc-saved" class="muted hidden">已保存 ✓</span>
+          </div>
+        </div>
+
         <div class="actions">
           <button id="btn-again" class="btn">再测一次</button>
           <button class="btn btn-ghost" onclick="show('home')">返回首页</button>
@@ -96,6 +131,8 @@
         <h2 class="sec-title">历史记录与稳定性</h2>
         <div id="history-list"></div>
         <div class="actions">
+          <button id="btn-export-json" class="btn btn-ghost">导出 JSON</button>
+          <button id="btn-export-csv" class="btn btn-ghost">导出 CSV</button>
           <button class="btn" onclick="show('home')">返回首页</button>
         </div>
       </div>

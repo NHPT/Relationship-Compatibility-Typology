@@ -133,3 +133,104 @@ function describeTotals(totals) {
   }
   return rows;
 }
+
+/* ============================================================
+ * 效度验证：结局数据采集 + 统计 + 导出
+ * ============================================================ */
+
+const OUTCOME_KEY = 'rct_outcomes_v1';
+
+/* ---------- 结局数据（localStorage） ---------- */
+function getOutcomes() {
+  try {
+    return JSON.parse(localStorage.getItem(OUTCOME_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveOutcome(outcome) {
+  const list = getOutcomes();
+  outcome.timestamp = Date.now();
+  list.push(outcome);
+  localStorage.setItem(OUTCOME_KEY, JSON.stringify(list));
+  return list;
+}
+
+function clearOutcomes() {
+  localStorage.removeItem(OUTCOME_KEY);
+}
+
+/* ---------- 导出工具 ---------- */
+function download(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportJSON(data, filename) {
+  download(JSON.stringify(data, null, 2), filename, 'application/json');
+}
+
+function exportCSV(rows, filename) {
+  if (!rows || !rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => {
+      const v = r[h] == null ? '' : String(r[h]);
+      return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    }).join(','))
+  ].join('\n');
+  download('\uFEFF' + csv, filename, 'text/csv;charset=utf-8');
+}
+
+/* ---------- 配型评级（仅凭两个类型代码，供效度统计） ---------- */
+function pairLevelByType(a, b) {
+  const ta = TYPES[a], tb = TYPES[b];
+  if (!ta || !tb) return 'warn';
+  if (ta.family === null || tb.family === null) return 'warn';
+
+  const FA = FAMILIES[ta.family], FB = FAMILIES[tb.family];
+  if (ta.family === tb.family) return 'high';              // 同家族
+  if (FA.axis === FB.axis && FA.rel !== FB.rel) return 'high'; // 主轴一致、关系互补
+  return 'talk';                                            // 主轴相反
+}
+
+/* ---------- 效标效度统计：配型评级 vs 真实结局 ---------- */
+function validityStats(outcomes) {
+  const paired = (outcomes || []).filter(o =>
+    o.type && o.partnerType && o.status && TYPES[o.type] && TYPES[o.partnerType]
+  );
+
+  if (paired.length === 0) {
+    return { count: 0, insufficient: true, groups: {} };
+  }
+
+  const groups = { high: [], talk: [], risk: [], warn: [] };
+  for (const o of paired) {
+    const level = pairLevelByType(o.type, o.partnerType);
+    groups[level].push(o);
+  }
+
+  const goodRate = arr => {
+    if (arr.length === 0) return null;
+    const good = arr.filter(o => o.status === 'good' || o.status === 'ok').length;
+    return Math.round(good / arr.length * 100);
+  };
+
+  return {
+    count: paired.length,
+    insufficient: paired.length < 10,
+    groups: {
+      high: { n: groups.high.length, goodRate: goodRate(groups.high) },
+      talk: { n: groups.talk.length, goodRate: goodRate(groups.talk) },
+      risk: { n: groups.risk.length, goodRate: goodRate(groups.risk) },
+      warn: { n: groups.warn.length, goodRate: goodRate(groups.warn) }
+    }
+  };
+}

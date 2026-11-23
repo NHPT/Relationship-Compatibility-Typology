@@ -12,6 +12,8 @@ const state = {
   timeLeft: TIME_PER_QUESTION
 };
 
+let currentResult = null; // 当前结果，供结局反馈关联
+
 /* ---------- 工具 ---------- */
 function $(sel) { return document.querySelector(sel); }
 function el(id) { return document.getElementById(id); }
@@ -34,6 +36,47 @@ function initHome() {
   el('btn-single').addEventListener('click', startTest);
   el('btn-history').addEventListener('click', showHistory);
   updateHistoryBadge();
+  fillPartnerOptions();
+  bindOutcomeAndExport();
+}
+
+/* ---------- 研究反馈：填充对方类型下拉 ---------- */
+function fillPartnerOptions() {
+  const sel = el('oc-partner');
+  if (!sel || sel.options.length > 1) return;
+  ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].forEach(c => {
+    const o = document.createElement('option');
+    o.value = c;
+    o.textContent = `${c} ${TYPES[c].name}`;
+    sel.appendChild(o);
+  });
+}
+
+/* ---------- 研究反馈：保存结局 + 导出 ---------- */
+function bindOutcomeAndExport() {
+  el('btn-save-outcome').addEventListener('click', () => {
+    if (!currentResult) return;
+    saveOutcome({
+      type: currentResult.type,
+      name: currentResult.name,
+      relation: el('oc-relation').value,
+      duration: el('oc-duration').value,
+      status: el('oc-status').value,
+      partnerType: el('oc-partner').value || null
+    });
+    const s = el('oc-saved');
+    s.classList.remove('hidden');
+    setTimeout(() => s.classList.add('hidden'), 2000);
+  });
+
+  el('btn-export-json').addEventListener('click', () => {
+    exportJSON({ history: getHistory(), outcomes: getOutcomes() }, 'rct-data.json');
+  });
+  el('btn-export-csv').addEventListener('click', () => {
+    const outcomes = getOutcomes();
+    if (!outcomes.length) { alert('还没有结局反馈数据'); return; }
+    exportCSV(outcomes, 'rct-outcomes.csv');
+  });
 }
 
 /* ---------- 开始测试 ---------- */
@@ -128,6 +171,8 @@ function finishTest() {
 
 /* ---------- 渲染单人结果 ---------- */
 function renderSingleResult(result) {
+  currentResult = result;
+  el('oc-saved').classList.add('hidden');
   const history = getHistory();
 
   el('result-type').textContent = result.name;
