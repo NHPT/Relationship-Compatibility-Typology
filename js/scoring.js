@@ -275,3 +275,32 @@ const SCENES = [
   { id: '伙伴', name: '长期伙伴', desc: '长期朋友、事业伙伴、合伙人' },
   { id: '团队', name: '团队协作', desc: '上下级、同事、项目搭档' }
 ];
+
+/* ============================================================
+ * 适配推荐（单人结果页用）
+ * 返回 { best, talk, avoid } 类型代码数组
+ *   best: 高兼容（同家族 或 主轴一致 + 关系形态互补）
+ *   talk: 可磨合（人生主轴相反，需协议）
+ *   avoid: 慎配（警示型 E/F）
+ * ============================================================ */
+function getMatchRecommendation(typeCode) {
+  const me = TYPES[typeCode];
+  if (!me || !me.family) return null; // 警示型/摇摆型不给推荐
+
+  const best = [], talk = [];
+  const NORMAL = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
+
+  for (const other of NORMAL) {
+    if (other === typeCode) continue;
+    const FA = FAMILIES[me.family];
+    const FB = FAMILIES[TYPES[other].family];
+    const sameAxis = FA.axis === FB.axis;
+    const sameRel = FA.rel === FB.rel;
+
+    if (TYPES[other].family === me.family) best.push(other);   // 同家族
+    else if (sameAxis && !sameRel) best.push(other);            // 主轴一致、关系互补
+    else talk.push(other);                                      // 主轴相反
+  }
+
+  return { best, talk, avoid: ['E', 'F'] };
+}

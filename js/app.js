@@ -2,18 +2,14 @@
  * RCT 关系适配类型学 — 交互逻辑（答题流程 + 限时 + 渲染）
  * ============================================================ */
 
-const TIME_PER_QUESTION = 15; // 每题限时（秒）
+const TIME_PER_QUESTION = 60; // 每题限时（秒）
 
 const state = {
-  mode: null,        // 'single' | 'pair'
   questions: [],
   current: 0,
   answers: [],       // [{dimension, score}]
-  pairA: null,
-  pairB: null,
   timer: null,
-  timeLeft: TIME_PER_QUESTION,
-  sceneId: '婚恋'
+  timeLeft: TIME_PER_QUESTION
 };
 
 /* ---------- 工具 ---------- */
@@ -35,30 +31,18 @@ function show(pageId) {
 
 /* ---------- 首页 ---------- */
 function initHome() {
-  el('btn-single').addEventListener('click', () => startTest('single'));
-  el('btn-pair').addEventListener('click', () => startTest('pair'));
+  el('btn-single').addEventListener('click', startTest);
   el('btn-history').addEventListener('click', showHistory);
   updateHistoryBadge();
 }
 
 /* ---------- 开始测试 ---------- */
-function startTest(mode) {
-  state.mode = mode;
+function startTest() {
   state.questions = generateTest();
   state.current = 0;
   state.answers = [];
-  state.pairA = null;
-  state.pairB = null;
-  renderQuizHeader();
   renderQuestion();
   show('quiz');
-}
-
-function renderQuizHeader() {
-  const label = state.mode === 'pair' && state.pairA
-    ? '请回答 B 方（第二个人）'
-    : (state.mode === 'pair' ? '请回答 A 方（第一个人）' : '请凭直觉作答');
-  el('quiz-sub').textContent = label;
 }
 
 /* ---------- 渲染题目 ---------- */
@@ -74,9 +58,10 @@ function renderQuestion() {
   optsBox.innerHTML = '';
   q.options.forEach(opt => {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'option';
     btn.textContent = opt.text;
-    btn.addEventListener('click', () => selectOption(opt));
+    btn.addEventListener('click', () => selectOption(btn, opt));
     optsBox.appendChild(btn);
   });
 
@@ -101,16 +86,25 @@ function tick() {
 function renderTimer() {
   const t = Math.max(0, state.timeLeft);
   el('quiz-timer').textContent = t + 's';
-  el('quiz-timer').className = 'quiz-timer' + (t <= 5 ? ' danger' : '');
+  el('quiz-timer').className = 'quiz-timer' + (t <= 10 ? ' danger' : '');
 }
 
 /* ---------- 选择选项 ---------- */
-function selectOption(opt) {
+function selectOption(btn, opt) {
+  if (state.locked) return; // 防重复点击
+  state.locked = true;
   clearInterval(state.timer);
+
   state.answers.push({ dimension: state.questions[state.current].dimension, score: opt.score });
-  // 高亮反馈
+
+  // 明确选中态：选中项高亮，其余禁用
   document.querySelectorAll('.option').forEach(b => b.classList.add('disabled'));
-  setTimeout(advance, 120);
+  btn.classList.add('selected');
+
+  setTimeout(() => {
+    state.locked = false;
+    advance();
+  }, 180);
 }
 
 /* ---------- 下一题 / 完成 ---------- */
@@ -127,36 +121,14 @@ function advance() {
 function finishTest() {
   const totals = scoreTest(state.answers);
   const result = buildSingleResult(totals);
-
-  if (state.mode === 'pair') {
-    if (!state.pairA) {
-      // A 方测完，测 B 方
-      state.pairA = result;
-      state.questions = generateTest();
-      state.current = 0;
-      state.answers = [];
-      renderQuizHeader();
-      renderQuestion();
-    } else {
-      state.pairB = result;
-      renderPairReport();
-      show('pair');
-    }
-  } else {
-    // 单人
-    saveResult(result);
-    renderSingleResult(result);
-    show('result');
-  }
+  saveResult(result);
+  renderSingleResult(result);
+  show('result');
 }
 
 /* ---------- 渲染单人结果 ---------- */
 function renderSingleResult(result) {
   const history = getHistory();
-  const agg = aggregate(history.filter(r => r.type === result.type || true));
-
-  // 最近多次的类型序列（用于稳定性）
-  const recent = history.slice(-5).map(r => r.type);
 
   el('result-type').textContent = result.name;
   el('result-code').textContent = result.type;
@@ -188,73 +160,65 @@ function renderSingleResult(result) {
     </div>
   `).join('');
 
+  // 适配推荐
+  renderMatchRecommendation(result);
+
   // 稳定性
   const stabilityBox = el('result-stability');
   if (history.length >= 2) {
-    const agg2 = aggregate(history);
+    const agg = aggregate(history);
     stabilityBox.innerHTML = `
-      <p>已测 <strong>${agg2.times}</strong> 次 · 稳定类型 <strong>${TYPES[agg2.stableType]?.name || agg2.stableType}</strong>
-      · 一致率 <strong>${agg2.consistency}%</strong> · <strong>${agg2.stability}</strong></p>
-      ${agg2.stability === '低稳定' ? '<p class="muted">⚠ 多次结果跳变，可能行为不一致、在伪装，或处于人生转折期，建议拉长观察。</p>' : ''}
+      <p>已测 <strong>${agg.times}</strong> 次 · 稳定类型 <strong>${TYPES[agg.stableType]?.name || agg.stableType}</strong>
+      · 一致率 <strong>${agg.consistency}%</strong> · <strong>${agg.stability}</strong></p>
+      ${agg.stability === '低稳定' ? '<p class="muted">⚠ 多次结果跳变，可能行为不一致、在伪装，或处于人生转折期，建议拉长观察。</p>' : ''}
     `;
     stabilityBox.classList.remove('hidden');
   } else {
     stabilityBox.classList.add('hidden');
   }
 
-  el('btn-again').onclick = () => startTest('single');
-  el('btn-to-pair').onclick = () => startTest('pair');
+  el('btn-again').onclick = startTest;
 }
 
-/* ---------- 双人配型报告 ---------- */
-function renderPairReport() {
-  const a = state.pairA, b = state.pairB;
-  el('pair-a-type').textContent = a.name + '（' + a.type + '）';
-  el('pair-a-axes').textContent = a.axes;
-  el('pair-b-type').textContent = b.name + '（' + b.type + '）';
-  el('pair-b-axes').textContent = b.axes;
+/* ---------- 适配推荐 ---------- */
+function renderMatchRecommendation(result) {
+  const box = el('result-match');
+  const reco = getMatchRecommendation(result.type);
 
-  // 场景选择
-  const sceneBox = el('pair-scenes');
-  sceneBox.innerHTML = SCENES.map(s => `
-    <button class="scene-btn ${s.id === state.sceneId ? 'active' : ''}" data-scene="${s.id}">
-      <span class="scene-name">${s.name}</span>
-      <span class="scene-desc">${s.desc}</span>
-    </button>
-  `).join('');
-  sceneBox.querySelectorAll('.scene-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.sceneId = btn.dataset.scene;
-      renderPairConclusion();
-    });
-  });
+  if (!reco) {
+    if (result.type === 'SWING') {
+      box.innerHTML = '<h3 class="sec-title">适配推荐</h3><p class="muted">类型尚未定型（主轴摇摆），建议再测 1~2 次，待类型稳定后再看适配推荐。</p>';
+      box.classList.remove('hidden');
+    } else if (result.isWarning) {
+      box.innerHTML = '<h3 class="sec-title">适配推荐</h3><p class="muted">警示型需先处理冲突/边界维度，暂不给出适配推荐。</p>';
+      box.classList.remove('hidden');
+    } else {
+      box.classList.add('hidden');
+    }
+    return;
+  }
 
-  renderPairConclusion();
-  el('btn-pair-restart').onclick = () => startTest('pair');
-}
+  const fmt = codes => codes.map(c => {
+    const t = TYPES[c];
+    return t ? `<span class="match-chip">${c} ${t.name.split('·').pop()}</span>` : '';
+  }).join('');
 
-function renderPairConclusion() {
-  const a = state.pairA, b = state.pairB;
-  const rep = buildPairReport(a, b, state.sceneId);
-  const c = rep.comp;
-
-  const levelClass = { high: 'good', talk: 'talk', risk: 'risk', warn: 'warn' }[c.level] || '';
-
-  el('pair-conclusion').innerHTML = `
-    <div class="pair-level ${levelClass}">${c.levelText}</div>
-    <p class="pair-reason">${esc(c.reason)}</p>
-  `;
-
-  // 标签对比
-  const la = a.label, lb = b.label;
-  el('pair-labels').innerHTML = ['生育意愿', '定居倾向'].map(k => `
-    <div class="label-row">
-      <span class="label-k">${k}</span>
-      <span>${esc(la[k])}</span>
-      <span class="vs">vs</span>
-      <span>${esc(lb[k])}</span>
+  box.innerHTML = `
+    <h3 class="sec-title">适配推荐</h3>
+    <div class="match-group">
+      <span class="match-label good">最合适</span>
+      <div class="match-types">${fmt(reco.best)}</div>
     </div>
-  `).join('');
+    <div class="match-group">
+      <span class="match-label talk">可磨合</span>
+      <div class="match-types">${fmt(reco.talk)}</div>
+    </div>
+    <div class="match-group">
+      <span class="match-label risk">慎配</span>
+      <div class="match-types">${fmt(reco.avoid)}</div>
+    </div>
+  `;
+  box.classList.remove('hidden');
 }
 
 /* ---------- 历史记录 ---------- */
@@ -270,7 +234,7 @@ function showHistory() {
         <p>共测 <strong>${history.length}</strong> 次 · 稳定类型 <strong>${TYPES[agg.stableType]?.name || agg.stableType}</strong>
         · 一致率 <strong>${agg.consistency}%</strong> · <strong>${agg.stability}</strong></p>
       </div>
-      ${history.slice().reverse().map((r, i) => `
+      ${history.slice().reverse().map(r => `
         <div class="history-item">
           <span class="h-type">${esc(r.name)}（${esc(r.type)}）</span>
           <span class="h-time">${new Date(r.timestamp).toLocaleString('zh-CN')}</span>

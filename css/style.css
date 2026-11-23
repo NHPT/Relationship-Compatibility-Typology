@@ -188,8 +188,9 @@ html, body {
   color: var(--ink);
   line-height: 1.5;
 }
-.option:hover { border-color: var(--green); background: var(--green-soft); }
-.option.disabled { pointer-events: none; opacity: .6; }
+.option:hover { border-color: var(--green); }
+.option.selected { border-color: var(--green); background: var(--green-soft); font-weight: 600; }
+.option.disabled { pointer-events: none; opacity: .55; }
 
 /* ---------- 结果卡片（通用） ---------- */
 .result-card {
@@ -336,85 +337,44 @@ html, body {
 }
 .btn-ghost:hover { background: var(--bg); }
 
-/* ---------- 双人对比 ---------- */
-.pair-head {
+/* ---------- 适配推荐 ---------- */
+.match-reco {
+  margin-bottom: 24px;
+}
+.match-group {
   display: flex;
+  align-items: flex-start;
   gap: 12px;
-  margin-bottom: 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
 }
-.pair-person {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 14px;
-  background: var(--bg);
-  border-radius: 10px;
-}
-.pair-label { font-size: 12px; color: var(--muted); }
-.pair-type { font-size: 16px; font-weight: 600; }
-.pair-axes { font-size: 12px; color: var(--muted); }
-
-.scenes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 24px;
-}
-.scene-btn {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  transition: border-color .15s, background .15s;
-}
-.scene-btn.active {
-  border-color: var(--green);
-  background: var(--green-soft);
-}
-.scene-name { font-size: 15px; font-weight: 600; }
-.scene-desc { font-size: 12px; color: var(--muted); }
-
-.pair-conclusion {
-  margin-bottom: 24px;
-}
-.pair-level {
-  display: inline-block;
-  padding: 8px 16px;
+.match-group:last-child { border-bottom: none; }
+.match-label {
+  flex-shrink: 0;
+  width: 56px;
+  padding: 4px 0;
   border-radius: 999px;
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
 }
-.pair-level.good { background: var(--green-soft); color: var(--green-strong); }
-.pair-level.talk { background: var(--warn-soft); color: var(--warn); }
-.pair-level.risk { background: var(--danger-soft); color: var(--danger); }
-.pair-level.warn { background: var(--danger-soft); color: var(--danger); }
-.pair-reason { font-size: 15px; line-height: 1.7; }
-
-.pair-labels {
+.match-label.good { background: var(--green-soft); color: var(--green-strong); }
+.match-label.talk { background: var(--warn-soft); color: var(--warn); }
+.match-label.risk { background: var(--danger-soft); color: var(--danger); }
+.match-types {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
 }
-.label-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  padding: 10px 14px;
+.match-chip {
+  padding: 4px 10px;
   background: var(--bg);
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink);
 }
-.label-k { flex-shrink: 0; color: var(--muted); font-size: 13px; }
-.label-row .vs { color: var(--muted); font-size: 12px; flex-shrink: 0; }
 
 /* ---------- 历史 ---------- */
 .history-summary {
@@ -438,7 +398,6 @@ html, body {
 @media (max-width: 520px) {
   .app { padding: 24px 16px 48px; }
   .result-card { padding: 20px; }
-  .scenes { grid-template-columns: 1fr; }
   .quiz-text { font-size: 18px; }
   .brand-text h1 { font-size: 22px; }
 }

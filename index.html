@@ -20,17 +20,13 @@
             <p class="sub">Relationship Compatibility Typology</p>
           </div>
         </div>
-        <p class="lead">不测性格，只测<b>关系</b>。通过 20 个日常场景的选择，识别你或对方在相处中的真实模式，判断两个人是否合适一起生活、一起做事、一起走远。</p>
+        <p class="lead">不测性格，只测<b>关系</b>。通过 20 个日常场景的选择，识别你在相处中的真实模式，判断你适合和什么样的人一起生活、一起做事、一起走远。</p>
       </header>
 
       <div class="mode-cards">
         <button id="btn-single" class="mode-card">
-          <span class="mode-title">单人自测</span>
-          <span class="mode-desc">测自己或某一个人的类型<br>约 3 分钟 · 20 题 · 每题限时 15 秒</span>
-        </button>
-        <button id="btn-pair" class="mode-card">
-          <span class="mode-title">双人对比</span>
-          <span class="mode-desc">分别测 A、B 两个人<br>再选场景，看两个人是否适配</span>
+          <span class="mode-title">开始测试</span>
+          <span class="mode-desc">20 个场景选择题 · 每题限时 60 秒<br>测完给出你的类型 + 适配推荐</span>
         </button>
         <button id="btn-history" class="mode-card">
           <span class="mode-title">历史记录</span>
@@ -50,7 +46,7 @@
           <span id="quiz-sub">请凭直觉作答</span>
           <span id="quiz-progress">第 1 / 20 题</span>
         </div>
-        <div class="quiz-timer" id="quiz-timer">15s</div>
+        <div class="quiz-timer" id="quiz-timer">60s</div>
       </div>
       <div class="progress-track"><div id="quiz-progress-bar" class="progress-bar"></div></div>
 
@@ -60,7 +56,7 @@
       </div>
     </section>
 
-    <!-- ============ 单人结果页 ============ -->
+    <!-- ============ 结果页 ============ -->
     <section id="page-result" class="page">
       <div class="result-card">
         <div class="result-head">
@@ -80,6 +76,8 @@
           <div class="kv"><span class="k">风险</span><span id="result-risk"></span></div>
         </div>
 
+        <div id="result-match" class="match-reco hidden"></div>
+
         <h3 class="sec-title">维度倾向</h3>
         <div id="result-dims" class="dims"></div>
 
@@ -87,41 +85,6 @@
 
         <div class="actions">
           <button id="btn-again" class="btn">再测一次</button>
-          <button id="btn-to-pair" class="btn btn-ghost">去双人对比</button>
-          <button class="btn btn-ghost" onclick="show('home')">返回首页</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ 双人对比页 ============ -->
-    <section id="page-pair" class="page">
-      <div class="result-card">
-        <h2 class="sec-title">双人适配报告</h2>
-
-        <div class="pair-head">
-          <div class="pair-person">
-            <span class="pair-label">A 方</span>
-            <span class="pair-type" id="pair-a-type"></span>
-            <span class="pair-axes" id="pair-a-axes"></span>
-          </div>
-          <div class="pair-person">
-            <span class="pair-label">B 方</span>
-            <span class="pair-type" id="pair-b-type"></span>
-            <span class="pair-axes" id="pair-b-axes"></span>
-          </div>
-        </div>
-
-        <h3 class="sec-title">选择关系场景</h3>
-        <div id="pair-scenes" class="scenes"></div>
-
-        <h3 class="sec-title">适配结论</h3>
-        <div id="pair-conclusion" class="pair-conclusion"></div>
-
-        <h3 class="sec-title">关键标签对比</h3>
-        <div id="pair-labels" class="pair-labels"></div>
-
-        <div class="actions">
-          <button id="btn-pair-restart" class="btn">重新对比</button>
           <button class="btn btn-ghost" onclick="show('home')">返回首页</button>
         </div>
       </div>
