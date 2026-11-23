@@ -1,460 +1,126 @@
-/* ============================================================
- * RCT 关系适配类型学 — 题库引擎
- * 设计：考点模板 + 参数池，运行时生成题面，减少机械重复
- * 扩容后：32 个考点模板，每个考点都带参数池，考点 + 参数双重随机
- *
- * 维度正方向定义：
- *   X 人生主轴：进取=+  安稳=-
- *   Y 关系形态：独立=+  共生=-
- *   C 冲突模式：回避=+  直面=-   （回避分越高越接近 E 警示型）
- *   B 边界模式：模糊=+  清晰=-   （模糊分越高越接近 F 警示型）
- *   M 消费观：  体验=+  规划=-
- *   K 生育意愿：要=+    不要=-
- *   S 定居倾向：流动=+  扎根=-
- * ============================================================ */
+/* 固定覆盖、稳定选项标识。四套题库各 32 题，条件题不参与分数。 */
+const ASSESSMENT_VERSION = 'rct-scenes-2026-11-23-v2';
+const SCENE_BANKS = {};
+const AXIS_KEYS = ['X', 'Y', 'M'];
+const BEHAVIOR_KEYS = ['D', 'U', 'C', 'B', 'R', 'I', 'J', 'P'];
 
-const DIMENSIONS = {
-  X: { name: '人生主轴', pos: '进取攀登', neg: '安稳守成' },
-  Y: { name: '关系形态', pos: '独立并置', neg: '深度共生' },
-  C: { name: '冲突模式', pos: '回避压抑', neg: '直面修复' },
-  B: { name: '边界模式', pos: '边界模糊', neg: '边界清晰' },
-  M: { name: '消费观',   pos: '即时体验', neg: '规划积累' },
-  K: { name: '生育意愿', pos: '想要孩子', neg: '不想要孩子' },
-  S: { name: '定居倾向', pos: '流动探索', neg: '扎根安定' }
+const BEHAVIORS = {
+  D: { name: '需求表达', short: '表达', action: '说清自己的需要、限制和可接受的替代做法' },
+  U: { name: '支持回应', short: '支持', action: '先了解对方需要倾听、建议还是具体帮助，再确认自己能提供什么' },
+  C: { name: '分歧修复', short: '修复', action: '描述具体分歧；需要暂停时约定重返沟通的时间' },
+  B: { name: '约定与透明', short: '约定', action: '确认信息、权限和交往约定；变化前沟通，不以检查隐私代替协商' },
+  R: { name: '承诺履行', short: '履约', action: '承诺前核对能力，变化时尽早告知，并给出新的安排' },
+  I: { name: '互惠分担', short: '互惠', action: '看见双方投入，讨论持续可行的分担方式' },
+  J: { name: '共同决策', short: '决策', action: '先确认各方目标、限制、决定权限和复查节点' },
+  P: { name: '压力应对', short: '压力', action: '说明负荷，调整优先级，避免把压力转移给对方' }
 };
 
-/* 每次测试各维度的抽题数量（合计 20 题；考点数 > 抽题数 → 考点随机） */
-const TEST_PLAN = { X: 3, Y: 3, C: 3, B: 4, M: 3, K: 2, S: 2 };
-
-/* ============ 题库：考点模板 ============ */
-const QUESTION_BANK = [
-  /* ---------- X 人生主轴（5 考点，抽 3） ---------- */
-  {
-    id: 'X1', dimension: 'X',
-    template: '{机会}，你会更倾向？',
-    vars: { '机会': [
-      '有个机会去陌生城市做更累但更有挑战的工作',
-      '有一个高风险高回报的项目机会摆在面前',
-      '公司想调你到一个从零开始的新业务线',
-      '有朋友拉你一起辞职创业',
-      '有个能让你快速成长但压力很大的岗位'
-    ] },
-    options: [
-      { text: '去，想看看自己能走多远', score: 2 },
-      { text: '不去，现在的生活挺好', score: -2 },
-      { text: '会去，但需要有人支持才安心', score: 1 },
-      { text: '看条件和前景再说，不盲目折腾', score: 0 }
-    ]
+const SCENARIOS = {
+  love: {
+    id: 'love', prefix: 'L', name: '婚恋伴侣', object: '伴侣', icon: 'heart',
+    desc: '共同生活、亲密空间与家庭安排', accent: '#9d4764',
+    instruction: '以同一位伴侣为对象；尚无伴侣时，按你在亲密交往中通常会采用的做法回答。',
+    axes: {
+      X: { name: '生活节奏', neg: '稳定经营', pos: '共同探索', topic: '生活目标与变化节奏' },
+      Y: { name: '陪伴方式', neg: '密切陪伴', pos: '保留空间', topic: '共同时间与独处空间' },
+      M: { name: '开支取向', neg: '预算规划', pos: '当前体验', topic: '日常开支与储蓄安排' }
+    },
+    typeNames: ['安居共筑·规划型', '安居共筑·体验型', '安居自在·规划型', '安居自在·体验型',
+      '并肩探索·规划型', '并肩探索·体验型', '自在探索·规划型', '自在探索·体验型'],
+    flexibleName: '共同生活·情境弹性型',
+    focus: '先确认双方婚育、居住、财务与家庭决策安排，再讨论日常相处方式。',
+    behaviorContext: '一起生活时',
+    matchNeeds: ['愿意直接表达需要，也尊重拒绝与个人空间', '能兑现约定，分歧后愿意重新沟通', '愿意明确婚育、财务和家庭决定的实际安排']
   },
-  {
-    id: 'X2', dimension: 'X',
-    template: '{自由情境}，你会？',
-    vars: { '自由情境': [
-      '突然不用为钱发愁了',
-      '突然多出大把可自由支配的时间',
-      '如果实现了财务自由'
-    ] },
-    options: [
-      { text: '去折腾新项目、学新东西', score: 2 },
-      { text: '好好经营现在的日子，稳定下来', score: -2 },
-      { text: '先休息，规划好再慢慢来', score: -1 },
-      { text: '不确定，可能都有', score: 0 }
-    ]
+  friend: {
+    id: 'friend', prefix: 'F', name: '朋友相处', object: '朋友', icon: 'circles',
+    desc: '联系节奏、支持方式与交往边界', accent: '#357b6c',
+    instruction: '以同一位常来往的朋友为对象，按近半年通常的相处方式回答。',
+    axes: {
+      X: { name: '活动取向', neg: '熟悉日常', pos: '尝试新鲜', topic: '相聚活动与新鲜感' },
+      Y: { name: '联系节奏', neg: '频繁联系', pos: '低频自主', topic: '联系频率与回复期待' },
+      M: { name: '聚会开支', neg: '控制花费', pos: '体验优先', topic: '聚会预算与费用分担' }
+    },
+    typeNames: ['日常常伴·节制型', '日常常伴·体验型', '日常自在·节制型', '日常自在·体验型',
+      '探索常伴·节制型', '探索常伴·体验型', '探索自在·节制型', '探索自在·体验型'],
+    flexibleName: '朋友相处·情境弹性型',
+    focus: '确认彼此对联系、支持、借款与隐私的期待；交往频率相同也需要持续互惠。',
+    behaviorContext: '朋友来往中',
+    matchNeeds: ['尊重联系频率和回复边界，不把慢回复直接理解为疏远', '能先问需要，再提供支持，并承认双方的投入', '对借款、隐私和玩笑尺度愿意明确约定']
   },
-  {
-    id: 'X3', dimension: 'X',
-    template: '你理想中{时间}的生活是？',
-    vars: { '时间': ['十年后', '五年后', '退休后'] },
-    options: [
-      { text: '一直在往上走、不断变化', score: 2 },
-      { text: '已经定下来、按部就班经营', score: -2 },
-      { text: '有变化，但节奏可控', score: 1 },
-      { text: '没细想，走一步看一步', score: 0 }
-    ]
+  venture: {
+    id: 'venture', prefix: 'V', name: '创业合伙', object: '合伙人', icon: 'compass',
+    desc: '增长节奏、协作方式与合伙规则', accent: '#9a6826',
+    instruction: '以同一位合伙人或拟合作对象为对象，按你通常参与创业合作的方式回答。',
+    axes: {
+      X: { name: '经营节奏', neg: '稳步经营', pos: '快速试拓', topic: '增长目标与试错节奏' },
+      Y: { name: '协作方式', neg: '共同推进', pos: '分工自主', topic: '共同参与与分工接口' },
+      M: { name: '资源投入', neg: '现金储备', pos: '增长投入', topic: '现金缓冲与增长投入' }
+    },
+    typeNames: ['稳营共推·储备型', '稳营共推·投入型', '稳营分工·储备型', '稳营分工·投入型',
+      '试拓共推·储备型', '试拓共推·投入型', '试拓分工·储备型', '试拓分工·投入型'],
+    flexibleName: '合伙经营·情境弹性型',
+    focus: '先核验投入与交付，再书面确认出资、权限、分配、知识产权及退出安排。',
+    behaviorContext: '合伙经营中',
+    matchNeeds: ['能交付经实际验证的职责，清楚说明投入与限制', '愿意共享必要经营信息，提前报告延期和风险', '能把出资、决策、分配和退出写成可执行约定']
   },
-  {
-    id: 'X4', dimension: 'X',
-    template: '你怎么看那些{折腾行为}的人？',
-    vars: { '折腾行为': [
-      '辞职去创业',
-      '频繁跳槽',
-      '裸辞去旅行',
-      '三十岁还重新开始学新东西'
-    ] },
-    options: [
-      { text: '佩服，敢想敢干', score: 2 },
-      { text: '不理解，太冒险了', score: -2 },
-      { text: '佩服，但自己不会这么做', score: -1 },
-      { text: '看结果，成了就是本事', score: 0 }
-    ]
-  },
-  {
-    id: 'X5', dimension: 'X',
-    template: '你怎么看{稳定选择}？',
-    vars: { '稳定选择': [
-      '考公进体制',
-      '一份工作干很多年',
-      '按部就班过一辈子',
-      '早点安定下来结婚生子'
-    ] },
-    options: [
-      { text: '挺好的，稳定踏实', score: -2 },
-      { text: '太闷了，我会受不了', score: 2 },
-      { text: '可以当退路，但不想一直这样', score: 1 },
-      { text: '看个人选择', score: 0 }
-    ]
-  },
-
-  /* ---------- Y 关系形态（5 考点，抽 3） ---------- */
-  {
-    id: 'Y1', dimension: 'Y',
-    template: '和重要的人在一起后，理想的{休息时间}是？',
-    vars: { '休息时间': ['周末', '假期', '休息日'] },
-    options: [
-      { text: '两人待一起，哪怕各做各的', score: -2 },
-      { text: '各自和朋友聚，晚上回家一起', score: 2 },
-      { text: '一起出去见共同的朋友', score: -1 },
-      { text: '看心情，有时想一个人待着', score: 1 }
-    ]
-  },
-  {
-    id: 'Y2', dimension: 'Y',
-    template: '{情境}下，你更认同哪种相处方式？',
-    vars: { '情境': ['长期相处中', '两个人工作都很忙的时候', '刚开始一段关系时'] },
-    options: [
-      { text: '好关系是高度融合、随时在一起', score: -2 },
-      { text: '好关系是各自独立、并排同行', score: 2 },
-      { text: '陪伴重要，但也要各自空间', score: -1 },
-      { text: '需要很多独处时间给自己充电', score: 1 }
-    ]
-  },
-  {
-    id: 'Y3', dimension: 'Y',
-    template: '你怎么看「{关系对象}之间不该有秘密」这句话？',
-    vars: { '关系对象': ['伴侣', '搭档', '最亲近的人'] },
-    options: [
-      { text: '认同，该无话不谈', score: -2 },
-      { text: '不认同，各自可以有自己的边界', score: 2 },
-      { text: '大事不瞒，小事可以有空间', score: 1 },
-      { text: '看情况，说不清', score: 0 }
-    ]
-  },
-  {
-    id: 'Y4', dimension: 'Y',
-    template: '你会主动和{亲近的人}分享日常琐事吗？',
-    vars: { '亲近的人': ['伴侣', '最好的朋友', '搭档'] },
-    options: [
-      { text: '会，大事小事都想说', score: -2 },
-      { text: '只分享重要的，琐事不说', score: 1 },
-      { text: '看心情，想说才说', score: 2 },
-      { text: '说不好', score: 0 }
-    ]
-  },
-  {
-    id: 'Y5', dimension: 'Y',
-    template: '和朋友聚会时，你会带上{亲近的人}吗？',
-    vars: { '亲近的人': ['伴侣', '关系很好的对象'] },
-    options: [
-      { text: '当然带，喜欢待在一起', score: -2 },
-      { text: '偶尔带，各自有各自的圈子', score: 1 },
-      { text: '一般不带，想有自己的社交', score: 2 },
-      { text: '看情况', score: 0 }
-    ]
-  },
-
-  /* ---------- C 冲突模式（5 考点，抽 3，高回避 → E） ---------- */
-  {
-    id: 'C1', dimension: 'C',
-    template: '和重要的人因为{分歧}意见不合时，你更可能？',
-    vars: { '分歧': ['周末去哪', '一笔钱怎么花', '一个重要决定', '生活方式的选择'] },
-    options: [
-      { text: '当场说清楚，折中解决', score: -2 },
-      { text: '先各自冷静，过几天再谈', score: 1 },
-      { text: '算了听对方的，但心里不太舒服', score: 2 },
-      { text: '坚持自己的，不太退让', score: -1 }
-    ]
-  },
-  {
-    id: 'C2', dimension: 'C',
-    template: '和好朋友因为{起因}闹矛盾，你一般会？',
-    vars: { '起因': ['一件小事', '一个误会', '观点不同', '利益冲突'] },
-    options: [
-      { text: '主动找对方说开', score: -2 },
-      { text: '等对方先来找我', score: 1 },
-      { text: '冷处理，觉得时间会解决', score: 2 },
-      { text: '找第三方评评理', score: -1 }
-    ]
-  },
-  {
-    id: 'C3', dimension: 'C',
-    template: '和{关系对象}讨论一个共同决定时，两人都坚持自己的方案，之后你更可能怎么做？',
-    vars: { '关系对象': ['朋友', '合作搭档', '亲近的人'] },
-    options: [
-      { text: '把各自顾虑说清楚，再定双方能执行的做法', score: -2 },
-      { text: '先暂停，约一个时间继续讨论', score: -1 },
-      { text: '暂时让对方做主，之后不再谈自己的顾虑', score: 1 },
-      { text: '搁置这件事，等分歧自己消失', score: 2 }
-    ]
-  },
-  {
-    id: 'C4', dimension: 'C',
-    template: '你被人{误解场景}时，通常会？',
-    vars: { '误解场景': ['误会了', '冤枉了', '曲解了你的意思'] },
-    options: [
-      { text: '立刻解释清楚', score: -2 },
-      { text: '算了，懒得解释', score: 2 },
-      { text: '先冷静，找机会再解释', score: -1 },
-      { text: '心里很不舒服，但不说', score: 1 }
-    ]
-  },
-  {
-    id: 'C5', dimension: 'C',
-    template: '{重要的人}因为你们的一次分歧闷闷不乐，事情还没解决，接下来你更可能？',
-    vars: { '重要的人': ['伴侣', '好朋友', '家人'] },
-    options: [
-      { text: '问清顾虑，商量下一步怎么处理', score: -2 },
-      { text: '先给空间，约定稍后再谈这次分歧', score: -1 },
-      { text: '怕说错话，之后也不再提起', score: 2 },
-      { text: '做些让对方开心的事，但暂时不谈分歧', score: 1 }
-    ]
-  },
-
-  /* ---------- B 边界模式（6 考点，抽 4，高模糊 → F） ---------- */
-  {
-    id: 'B1', dimension: 'B',
-    template: '{他人}的对象和一个异性同事关系特别好、经常单独吃饭，你怎么看？',
-    vars: { '他人': ['一个朋友', '你的朋友'] },
-    options: [
-      { text: '正常，只是工作关系', score: 2 },
-      { text: '有点过了，该避避嫌', score: -2 },
-      { text: '看有没有瞒着，透明就行', score: -1 },
-      { text: '完全不能接受', score: -2 }
-    ]
-  },
-  {
-    id: 'B2', dimension: 'B',
-    template: '{对象}还能和前任保持联系吗？',
-    vars: { '对象': ['你', '你的伴侣', '你的搭档'] },
-    options: [
-      { text: '能，都已经是过去式了', score: 2 },
-      { text: '尽量回避，减少误会', score: -2 },
-      { text: '有事才联系，平时不聊', score: -1 },
-      { text: '看对方的态度', score: 0 }
-    ]
-  },
-  {
-    id: 'B3', dimension: 'B',
-    template: '以后{阶段}，你希望和父母保持怎样的关系？',
-    vars: { '阶段': ['成家', '立业', '独立生活'] },
-    options: [
-      { text: '住得近、多来往，大事听父母', score: 2 },
-      { text: '保持距离，自己独立做决定', score: -2 },
-      { text: '可以来往，但大事自己定', score: -1 },
-      { text: '还没想过', score: 0 }
-    ]
-  },
-  {
-    id: 'B4', dimension: 'B',
-    template: '父母对你{人生大事}有不同意见，你会？',
-    vars: { '人生大事': ['的对象', '的事业选择', '的定居城市', '的婚姻安排'] },
-    options: [
-      { text: '父母意见很重要，会认真听甚至照做', score: 2 },
-      { text: '听，但最终自己拿主意', score: -1 },
-      { text: '我的事我自己定，父母少插手', score: -2 },
-      { text: '会很纠结，难两全', score: 1 }
-    ]
-  },
-  {
-    id: 'B5', dimension: 'B',
-    template: '你能接受{亲近的人}有一个关系很要好的异性朋友吗？',
-    vars: { '亲近的人': ['伴侣', '另一半'] },
-    options: [
-      { text: '不能接受，容易出问题', score: -2 },
-      { text: '能，但要保持分寸', score: -1 },
-      { text: '能，正常交友而已', score: 2 },
-      { text: '看那个人的为人', score: 0 }
-    ]
-  },
-  {
-    id: 'B6', dimension: 'B',
-    template: '{家庭阶段}，小家庭或你的人生大事，你会让父母参与决策吗？',
-    vars: { '家庭阶段': ['结婚以后', '独立生活以后'] },
-    options: [
-      { text: '会，父母经验丰富', score: 2 },
-      { text: '听意见，但决定权在我', score: -1 },
-      { text: '完全自己做主', score: -2 },
-      { text: '看什么事', score: 0 }
-    ]
-  },
-
-  /* ---------- M 消费观（5 考点，抽 3） ---------- */
-  {
-    id: 'M1', dimension: 'M',
-    template: '月底看中一个{心动物品}，你会？',
-    vars: { '心动物品': ['有点贵但很想要的东西', '很想要的新手机', '一直想去的旅行', '想报的课程'] },
-    options: [
-      { text: '买，喜欢就值得', score: 2 },
-      { text: '先看预算，超了就不买', score: -2 },
-      { text: '纠结，最后可能还是买', score: 1 },
-      { text: '等打折或下个月再说', score: -1 }
-    ]
-  },
-  {
-    id: 'M2', dimension: 'M',
-    template: '{收入}到手后，你一般会？',
-    vars: { '收入': ['工资', '奖金', '年终奖', '一笔外快'] },
-    options: [
-      { text: '先存下一部分', score: -2 },
-      { text: '先花在当下该花的地方', score: 2 },
-      { text: '存一些、花一些', score: -1 },
-      { text: '没细算，比较随性', score: 1 }
-    ]
-  },
-  {
-    id: 'M3', dimension: 'M',
-    template: '你怎么看{分期消费}？',
-    vars: { '分期消费': ['分期买大件', '信用卡透支', '借钱消费', '网贷'] },
-    options: [
-      { text: '尽量不用，量入为出', score: -2 },
-      { text: '合理用，能提前享受', score: 2 },
-      { text: '应急的时候才用', score: -1 },
-      { text: '不排斥，看情况', score: 1 }
-    ]
-  },
-  {
-    id: 'M4', dimension: 'M',
-    template: '要花一笔大钱（比如{大额}），你会？',
-    vars: { '大额': ['买房', '买车', '装修', '留学'] },
-    options: [
-      { text: '提前存钱，攒够再买', score: -2 },
-      { text: '贷款或分期，先享受', score: 2 },
-      { text: '精打细算，选性价比高的', score: -1 },
-      { text: '随性，喜欢就下手', score: 1 }
-    ]
-  },
-  {
-    id: 'M5', dimension: 'M',
-    template: '{关系对象}过生日或重要日子，你会？',
-    vars: { '关系对象': ['伴侣', '好朋友', '家人'] },
-    options: [
-      { text: '精心准备，花点钱值得', score: 2 },
-      { text: '量力而行，心意最重要', score: -2 },
-      { text: '会花，但控制预算', score: -1 },
-      { text: '看心情', score: 1 }
-    ]
-  },
-
-  /* ---------- K 生育意愿（3 考点，抽 2） ---------- */
-  {
-    id: 'K1', dimension: 'K',
-    template: '你怎么看身边{人}选择丁克？',
-    vars: { '人': ['夫妻', '朋友', '同事'] },
-    options: [
-      { text: '挺好，各有各的活法', score: 0 },
-      { text: '理解，但我自己还是想要孩子', score: 2 },
-      { text: '不太理解，有孩子家庭才完整', score: 2 },
-      { text: '没想过这个问题', score: 0 }
-    ]
-  },
-  {
-    id: 'K2', dimension: 'K',
-    template: '{情境}时，你想象过自己有孩子的画面吗？',
-    vars: { '情境': ['看到别人带孩子', '被问起什么时候要孩子', '独处的时候'] },
-    options: [
-      { text: '想过，很期待', score: 2 },
-      { text: '偶尔想，但也不强求', score: 0 },
-      { text: '基本没想，更想为自己活', score: -2 },
-      { text: '说不好', score: 0 }
-    ]
-  },
-  {
-    id: 'K3', dimension: 'K',
-    template: '你怎么看{养育话题}？',
-    vars: { '养育话题': ['养一个孩子的成本', '有孩子后失去自由', '有了孩子人生才完整', '传宗接代这回事'] },
-    options: [
-      { text: '值得，再累也愿意', score: 2 },
-      { text: '挺大的负担，我不确定要不要', score: 0 },
-      { text: '成本太高，我更想为自己活', score: -2 },
-      { text: '没认真想过', score: 0 }
-    ]
-  },
-
-  /* ---------- S 定居倾向（3 考点，抽 2） ---------- */
-  {
-    id: 'S1', dimension: 'S',
-    template: '{人生阶段}，你想在哪里定居？',
-    vars: { '人生阶段': ['以后', '成家后', '工作稳定后'] },
-    options: [
-      { text: '就现在这座城市，扎根下来', score: -2 },
-      { text: '跟着机会和事业走', score: 2 },
-      { text: '想稳定，但不排斥为大事搬', score: -1 },
-      { text: '没想好', score: 0 }
-    ]
-  },
-  {
-    id: 'S2', dimension: 'S',
-    template: '为了{机会}，你愿意搬去陌生城市吗？',
-    vars: { '机会': ['一个很好的工作机会', '一个重要的发展机会', '和重要的人团聚', '更好的生活'] },
-    options: [
-      { text: '愿意，机会难得', score: 2 },
-      { text: '不愿意，稳定更重要', score: -2 },
-      { text: '愿意，但会犹豫', score: 1 },
-      { text: '看对方/团队是不是一起', score: 0 }
-    ]
-  },
-  {
-    id: 'S3', dimension: 'S',
-    template: '你如何看待{生活状态}？',
-    vars: { '生活状态': ['经常换城市生活', '四海为家'] },
-    options: [
-      { text: '向往，想去不同的地方', score: 2 },
-      { text: '不喜欢，想安定下来', score: -2 },
-      { text: '年轻时可以，老了要安定', score: -1 },
-      { text: '没什么特别感觉', score: 0 }
-    ]
+  team: {
+    id: 'team', prefix: 'T', name: '团队协作', object: '同事', icon: 'grid',
+    desc: '工作节奏、协作接口与交付约定', accent: '#466da6',
+    instruction: '以同一个团队或同事为对象，按你近半年通常的协作方式回答。',
+    axes: {
+      X: { name: '任务节奏', neg: '流程稳定', pos: '迭代尝试', topic: '流程要求与试验节奏' },
+      Y: { name: '协作接口', neg: '密切同步', pos: '异步自主', topic: '同步频率与自主范围' },
+      M: { name: '资源安排', neg: '预留缓冲', pos: '集中推进', topic: '资源缓冲与集中投入' }
+    },
+    typeNames: ['流程同步·缓冲型', '流程同步·推进型', '流程自主·缓冲型', '流程自主·推进型',
+      '迭代同步·缓冲型', '迭代同步·推进型', '迭代自主·缓冲型', '迭代自主·推进型'],
+    flexibleName: '团队协作·情境弹性型',
+    focus: '结合岗位要求、实际能力与交付记录确认分工，再明确反馈、升级和工作时间约定。',
+    behaviorContext: '团队协作中',
+    matchNeeds: ['能确认任务接口、验收标准与决定权限', '出现风险会提前沟通，尊重反馈和工作时间边界', '具备任务所需的实际能力，并有可检查的交付记录']
   }
-];
+};
 
-/* ============ 出题引擎 ============ */
-
-/* 洗牌（Fisher-Yates），返回新数组 */
-function shuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+function styleQuestion(sceneId, suffix, text, options) {
+  return makeQuestion(sceneId, suffix, 'style', suffix[0], text,
+    options.map((text, i) => ({ text, score: [-2, -1, 1, 2][i] })));
 }
-
-/* 从数组随机取一个 */
-function pick(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+function behaviorQuestion(sceneId, suffix, text, options) {
+  return makeQuestion(sceneId, suffix, 'behavior', suffix[0], text,
+    options.map((text, i) => ({ text, score: [3, 2, 1, 0][i] })));
 }
-
-/* 实例化单个考点模板 → 一道题 */
-function instantiate(tpl) {
-  let text = tpl.template;
-  for (const [varName, pool] of Object.entries(tpl.vars || {})) {
-    text = text.replace(new RegExp(`\\{${varName}\\}`, 'g'), pick(pool));
-  }
+function conditionQuestion(sceneId, key, label, text, options, discussion) {
   return {
-    id: tpl.id,
-    dimension: tpl.dimension,
-    text: text,
-    options: shuffle(tpl.options.map((o, i) => ({ ...o, idx: i })))
+    ...makeQuestion(sceneId, key, 'condition', key, text,
+      options.map(([value, text]) => ({ value, text }))),
+    label, discussion
   };
 }
-
-/* 生成一张完整试卷（20 题，覆盖 7 维度，考点随机） */
-function generateTest() {
-  const questions = [];
-  for (const [dim, count] of Object.entries(TEST_PLAN)) {
-    const pool = QUESTION_BANK.filter(t => t.dimension === dim);
-    const chosen = shuffle(pool).slice(0, count);
-    for (const tpl of chosen) {
-      questions.push(instantiate(tpl));
-    }
+function makeQuestion(sceneId, suffix, kind, dimension, text, options) {
+  const id = `${sceneId}-${suffix}`;
+  return {
+    id, sceneId, kind, dimension, text,
+    options: options.map((option, i) => ({ ...option, id: `${id}:${i}` }))
+  };
+}
+function getScene(sceneId) {
+  const scene = SCENARIOS[sceneId];
+  if (!scene) throw new Error('请选择有效的测评场景');
+  return scene;
+}
+function shuffle(items, random = Math.random) {
+  const copy = items.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-  return shuffle(questions);
+  return copy;
+}
+function generateTest(sceneId, random = Math.random) {
+  getScene(sceneId);
+  const bank = SCENE_BANKS[sceneId];
+  if (!bank || bank.length !== 32) throw new Error('场景题库未完整加载');
+  // 固定题目覆盖，不把随机变体当等价试卷。仅选项位置随机。
+  return bank.map(q => ({ ...q, options: shuffle(q.options, random) }));
 }

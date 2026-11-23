@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="RCT 关系适配类型学：通过日常场景选择梳理生活目标、相处习惯与决策偏好，生成个人类型画像，了解不同类型之间的共同点、差异与协商重点。">
+  <meta name="description" content="RCT：分别从婚恋、朋友、创业和团队场景，梳理你的相处风格、行为选择与具体期待，形成个人画像和适配协商参考。">
   <title>RCT 关系适配类型学</title>
-  <link rel="stylesheet" href="css/style.css?v=20261123-profile">
+  <link rel="stylesheet" href="css/style.css?v=20261123-scenes-v2">
 </head>
 <body>
   <div class="app">
@@ -20,67 +20,74 @@
             <p class="sub">Relationship Compatibility Typology</p>
           </div>
         </div>
-        <p class="lead">通过日常场景选择，梳理你的生活目标、相处习惯与决策偏好，生成个人类型画像，帮助你了解与不同类型相处时的共同点、差异和需要协商的问题。</p>
+        <p class="lead">你希望怎样相处，又通常怎样回应别人？从婚恋、朋友、创业或团队场景出发，梳理你的相处风格、行为选择与具体期待，了解与他人相处时值得确认的共同点、差异和约定。</p>
       </header>
 
-      <div class="mode-cards">
-        <button id="btn-single" class="mode-card">
-          <span class="mode-title">开始测试</span>
-          <span class="mode-desc">20 道题 · 7 项倾向 · 每题 60 秒阅读提示<br>个人类型 + 类型适配参考 · 超时仍可作答</span>
-        </button>
-        <button id="btn-history" class="mode-card">
-          <span class="mode-title">历史记录</span>
-          <span class="mode-desc">查看多次测试的稳定性<span id="history-count"></span></span>
-        </button>
-      </div>
+      <p class="entry-label">选择你这次想了解的相处场景</p>
+      <div class="mode-cards" id="scene-entries"></div>
+      <div class="home-history"><button type="button" id="btn-history" class="btn btn-ghost">查看历史记录<span id="history-count"></span></button><span class="muted">每套 32 题 · 选后确认 · 可返回修改</span></div>
 
       <div class="home-foot">
-        <p class="muted">当前为探索原型，类型与推荐规则尚未经过真实样本验证。多次结果一致只说明分类重复性，不等于准确，也不能据此预测关系长久。</p>
+        <p class="muted">这是个人作答画像。当前题库与适配规则仍待真人研究验证，不能直接判断另一人的倾向、关系结局或工作能力。记录仅存于当前浏览器。</p>
       </div>
     </section>
 
     <!-- ============ 答题页 ============ -->
     <section id="page-quiz" class="page">
+      <div class="quiz-scene-line"><strong id="quiz-scene"></strong><button type="button" class="text-btn" data-home>返回首页</button></div>
+      <p id="quiz-context" class="quiz-context muted"></p>
       <div class="quiz-top">
         <div class="quiz-meta">
-          <span id="quiz-sub">请凭直觉作答</span>
-          <span id="quiz-progress">第 1 / 20 题</span>
+          <span id="quiz-sub">选择自己通常采用的做法</span>
+          <span id="quiz-progress">第 1 / 32 题</span>
         </div>
         <div class="quiz-timer" id="quiz-timer">60s</div>
       </div>
       <div class="progress-track"><div id="quiz-progress-bar" class="progress-bar"></div></div>
 
       <div class="quiz-body">
-        <h2 class="quiz-text" id="quiz-text"></h2>
-        <div class="options" id="quiz-options"></div>
+        <h2 class="quiz-text" id="quiz-text" tabindex="-1"></h2>
+        <div class="options" id="quiz-options" role="group" aria-labelledby="quiz-text"></div>
+        <div class="quiz-actions"><button type="button" id="quiz-prev" class="btn btn-ghost" disabled>上一题</button><button type="button" id="quiz-next" class="btn" disabled>下一题</button></div>
+        <p class="quiz-hint muted">60 秒仅作阅读提示，不会自动选择或跳题。</p>
       </div>
     </section>
 
     <!-- ============ 结果页 ============ -->
     <section id="page-result" class="page">
-      <div class="result-card">
+      <div class="result-card" id="result-card">
+        <p class="result-scene" id="result-scene"></p>
         <div class="result-head">
+          <span class="result-symbol" id="result-symbol"></span>
           <div>
-            <div class="result-code" id="result-code">A</div>
-            <h2 id="result-type">安稳共栖型</h2>
+            <div class="result-code" id="result-code"></div>
+            <h2 id="result-type"></h2>
             <p class="result-axes" id="result-axes"></p>
           </div>
         </div>
 
+        <p id="result-flex" class="profile-note hidden"></p>
         <div id="result-warn" class="warn-banner hidden"></div>
 
         <div class="result-grid">
           <div class="kv"><span class="k">核心特征</span><span id="result-core"></span></div>
-          <div class="kv"><span class="k">本次标签</span><span id="result-tags"></span></div>
-          <div class="kv"><span class="k">可能优势</span><span id="result-strength"></span></div>
-          <div class="kv"><span class="k">需留意</span><span id="result-risk"></span></div>
+          <div class="kv"><span class="k">行为线索</span><span id="result-strength"></span></div>
+          <div class="kv"><span class="k">场景重点</span><span id="result-risk"></span></div>
         </div>
 
-        <div id="result-match" class="match-reco hidden"></div>
-
-        <h3 class="sec-title">维度倾向</h3>
-        <p class="dim-explainer muted">位置表示本次作答的倾向方向，不代表能力、优劣或在人群中的排名。</p>
+        <h3 class="sec-title">相处风格 · 三条方向轴</h3>
+        <p class="dim-explainer muted">每轴三题，位置表示本次选择的合计方向。两端都可以有合理做法，不代表优劣或人群排名。</p>
         <div id="result-dims" class="dims"></div>
+
+        <h3 class="sec-title">行为观察 · 八项回答分布</h3>
+        <p class="dim-explainer muted">每项两题，按选项中主动说明、协商与跟进的行动计 0–6 分。图形只展示本次回答，不是能力评分或适配概率，面积没有综合意义。</p>
+        <div id="result-radar" class="radar"></div>
+        <div id="result-behaviors" class="behaviors"></div>
+
+        <h3 class="sec-title">具体意愿与约定 · 单独确认</h3>
+        <p class="dim-explainer muted">这些回答不计分、不被类型代替。实际适配需要与对方逐项确认。</p>
+        <div id="result-conditions" class="conditions"></div>
+        <div id="result-match" class="match-reco"></div>
 
         <div id="result-stability" class="stability hidden"></div>
 
@@ -88,14 +95,8 @@
           <h3 class="sec-title">研究反馈（可选）</h3>
           <p class="muted">可记录你与某人的实际相处情况。仅保存在当前浏览器，不会上传；导出后可供后续研究整理，保存反馈不会自动校准结果。</p>
           <div class="outcome-form">
-            <label class="oc-field"><span>关系类型</span>
-              <select id="oc-relation">
-                <option value="" selected disabled>请选择实际关系类型</option>
-                <option value="婚恋">婚恋伴侣</option>
-                <option value="创业">搭伙创业</option>
-                <option value="伙伴">长期伙伴</option>
-                <option value="团队">团队协作</option>
-              </select>
+            <label class="oc-field"><span>本次反馈场景</span>
+              <input id="oc-relation" readonly>
             </label>
             <label class="oc-field"><span>相处时长</span>
               <select id="oc-duration">
@@ -114,7 +115,7 @@
                 <option value="ended">已结束</option>
               </select>
             </label>
-            <label class="oc-field"><span>对方的自测类型（未知时留空）</span>
+            <label class="oc-field"><span>对方在同一场景的自测风格（未知时留空）</span>
               <select id="oc-partner"><option value="">不知道或尚未测试</option></select>
             </label>
             <button id="btn-save-outcome" class="btn btn-ghost">保存到本地</button>
@@ -122,9 +123,11 @@
           </div>
         </div>
 
+        <p id="result-storage" class="storage-note muted" role="status"></p>
         <div class="actions">
           <button id="btn-again" class="btn">再测一次</button>
-          <button class="btn btn-ghost" onclick="show('home')">返回首页</button>
+          <button id="btn-export-result" class="btn btn-ghost">导出本次画像</button>
+          <button class="btn btn-ghost" data-home>返回首页</button>
         </div>
       </div>
     </section>
@@ -132,21 +135,26 @@
     <!-- ============ 历史页 ============ -->
     <section id="page-history" class="page">
       <div class="result-card">
-        <h2 class="sec-title">历史记录与稳定性</h2>
+        <h2 class="sec-title">历史记录</h2>
+        <label class="oc-field history-filter"><span>查看场景</span><select id="history-scene"><option value="all">全部场景</option><option value="love">婚恋伴侣</option><option value="friend">朋友相处</option><option value="venture">创业合伙</option><option value="team">团队协作</option><option value="legacy">旧版通用测评</option></select></label>
         <div id="history-list"></div>
         <div class="actions">
           <button id="btn-export-json" class="btn btn-ghost">导出 JSON</button>
           <button id="btn-export-csv" class="btn btn-ghost">导出 CSV</button>
-          <button class="btn" onclick="show('home')">返回首页</button>
+          <button class="btn" data-home>返回首页</button>
         </div>
       </div>
     </section>
 
   </div>
 
-  <script src="js/questionBank.js?v=20261123-profile"></script>
-  <script src="js/scoring.js?v=20261123-profile"></script>
-  <script src="js/report.js?v=20261123-profile"></script>
-  <script src="js/app.js?v=20261123-profile"></script>
+  <script src="js/questionBank.js?v=20261123-scenes-v2"></script>
+  <script src="js/banks/love.js?v=20261123-scenes-v2"></script>
+  <script src="js/banks/friend.js?v=20261123-scenes-v2"></script>
+  <script src="js/banks/venture.js?v=20261123-scenes-v2"></script>
+  <script src="js/banks/team.js?v=20261123-scenes-v2"></script>
+  <script src="js/scoring.js?v=20261123-scenes-v2"></script>
+  <script src="js/report.js?v=20261123-scenes-v2"></script>
+  <script src="js/app.js?v=20261123-scenes-v2"></script>
 </body>
 </html>

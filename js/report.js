@@ -1,190 +1,111 @@
-/* ============================================================
- * RCT 关系适配类型学 — 报告生成 + 多次测试聚合
- * ============================================================ */
-
+/* 记录留在浏览器；历史旧版本保留原样，不用新题库重新解释。 */
 const STORAGE_KEY = 'rct_history_v1';
+const OUTCOME_KEY = 'rct_outcomes_v1';
 
-/* ---------- 历史记录（localStorage） ---------- */
-function getHistory() {
+function readList(key) {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch (e) {
+    const value = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(value) ? value.filter(row => row && typeof row === 'object') : [];
+  } catch {
     return [];
   }
+}
+function writeList(key, list) {
+  try {
+    localStorage.setItem(key, JSON.stringify(list));
+    return true;
+  } catch {
+    return false;
+  }
+}
+function getHistory() { return readList(STORAGE_KEY); }
+function getOutcomes() { return readList(OUTCOME_KEY); }
+function clearHistory() {
+  try { localStorage.removeItem(STORAGE_KEY); return true; } catch { return false; }
+}
+
+function buildSingleResult(totals, answers, sceneId) {
+  const scene = getScene(sceneId);
+  const c = classify(totals, sceneId);
+  const behaviorRows = BEHAVIOR_KEYS.map(key => {
+    const val = totals.behavior[key];
+    return {
+      key, ...BEHAVIORS[key], val, position: Math.round(val / 6 * 100),
+      text: val >= 5 ? '选择中较明确' : val <= 1 ? '较少主动跟进' : '两题做法有差异',
+      answers: answers.filter(answer => answer.kind === 'behavior' && answer.dimension === key)
+        .map(answer => ({ questionText: answer.questionText, optionText: answer.optionText }))
+    };
+  });
+  const conditions = SCENE_BANKS[sceneId].filter(q => q.kind === 'condition').map(q => {
+    const value = totals.conditions[q.dimension];
+    const option = q.options.find(option => option.value === value);
+    return { key: q.dimension, label: q.label, value, text: option.text, discussion: q.discussion };
+  });
+  const observationKeys = behaviorRows.filter(row => row.val <= 1).map(row => row.name);
+  const directional = c.axes.filter(row => row.direction !== 'mid');
+  const flexible = c.axes.filter(row => row.direction === 'mid');
+  const core = [
+    directional.length ? directional.map(row => `${row.name}偏向${row.text}`).join('，') : '',
+    flexible.length ? `${flexible.map(row => row.name).join('、')}的回答采用了两侧做法，合计靠近中点` : ''
+  ].filter(Boolean).join('；') + '。';
+  return {
+    assessmentVersion: ASSESSMENT_VERSION, measurementStatus: 'exploratory',
+    sceneId, sceneName: scene.name,
+    type: c.type, name: c.name, color: c.color, symbol: c.symbol,
+    profile: c.profile, flexible: c.flexible,
+    axes: c.axes.map(row => `${row.name}：${row.text}`).join(' · '),
+    core,
+    strength: behaviorRows.filter(row => row.val >= 5).length
+      ? `较多选择主动说明和跟进的内容：${behaviorRows.filter(row => row.val >= 5).map(row => row.name).join('、')}。可用实际相处进一步核对。`
+      : '可从下方逐题回答开始，了解哪些做法已采用、哪些需要具体约定。',
+    risk: scene.focus,
+    observation: observationKeys.length
+      ? `${observationKeys.join('、')}的两题中较少选择主动说明或跟进。建议核对具体情况；这些观察不覆盖你的风格，也不代表人品或能力结论。`
+      : '',
+    axisRows: c.axes, behaviorRows, conditions, totals,
+    answers: answers.map(answer => ({ ...answer }))
+  };
 }
 
 function saveResult(result) {
-  const history = getHistory();
   result.timestamp = Date.now();
   result.resultId = globalThis.crypto?.randomUUID?.()
     || `rct-${result.timestamp}-${Math.random().toString(36).slice(2)}`;
-  result.assessmentVersion = 'rct-exploratory-2026-11-23-profile';
+  const history = getHistory();
   history.push(result);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-  return history;
+  return writeList(STORAGE_KEY, history);
 }
 
-function clearHistory() {
-  localStorage.removeItem(STORAGE_KEY);
-}
-
-/* ---------- 数值工具 ---------- */
-function mean(arr) {
-  return arr.reduce((s, v) => s + v, 0) / arr.length;
-}
-function mode(arr) {
-  const counts = {};
-  for (const v of arr) counts[v] = (counts[v] || 0) + 1;
-  let best = null, bestN = -1;
-  for (const [k, n] of Object.entries(counts)) {
-    if (n > bestN) { best = k; bestN = n; }
-  }
-  return { value: best, count: bestN };
-}
-
-/* ---------- 多次测试聚合 ---------- */
 function aggregate(history) {
-  if (!history || history.length === 0) return null;
-
-  const m = mode(history.map(r => r.type));
-  const consistency = m.count / history.length;
-  const sameVersion = new Set(history.map(r => r.assessmentVersion || 'legacy')).size === 1;
-
-  const dims = ['X', 'Y', 'C', 'B', 'M', 'K', 'S'];
-  const avgTotals = {};
-  for (const d of dims) avgTotals[d] = mean(history.map(r => r.totals[d]));
-
-  // 稳定性
-  let stability;
-  if (!sameVersion) stability = '跨版本不可比较';
-  else if (m.value === 'SWING') stability = '倾向未明确';
-  else if (history.length >= 2 && consistency === 1) stability = '分类重复';
-  else if (consistency >= 0.5) stability = '中稳定';
-  else stability = '低稳定';
-
-  // 用均值重新分类，得到"综合类型"
-  const combined = sameVersion ? classify(avgTotals) : null;
-
-  return {
-    times: history.length,
-    stableType: m.value,
-    consistency: Math.round(consistency * 100),
-    stability,
-    sameVersion,
-    avgTotals,
-    combined,
-    types: history.map(r => r.type)
-  };
-}
-
-/* ---------- 单次结果结构 ---------- */
-function buildSingleResult(totals, answers = []) {
-  const c = classify(totals);
-  const t = TYPES[c.type] || TYPES.SWING;
-  return {
-    type: c.type,
-    measurementStatus: 'exploratory',
-    answers: answers.map(answer => ({ ...answer })),
-    name: t.name,
-    axes: c.type === 'SWING'
-      ? MATCH_AXES.map(axis => `${axis.topic}：${sideText(axis.dimension, totals[axis.dimension]) === '均衡' ? '未明确' : sideText(axis.dimension, totals[axis.dimension])}`).join(' · ')
-      : t.axes,
-    core: t.core,
-    tags: Object.entries(c.label).map(([key, value]) => `${key}：${value}`).join(' · '),
-    strength: t.strength,
-    risk: t.risk,
-    isWarning: c.isWarning,
-    warnings: c.warnings,
-    x: c.x,
-    y: c.y,
-    m: c.m,
-    label: c.label,
-    totals: c.totals,
-    confidence: c.confidence,
-    swing: c.swing,
-    dims: DIMENSIONS
-  };
-}
-
-/* ---------- 维度倾向 → 可读文本 ---------- */
-function sideText(dim, val, threshold = 2) {
-  const s = side(val, threshold);
-  if (s === 'pos') return DIMENSIONS[dim].pos;
-  if (s === 'neg') return DIMENSIONS[dim].neg;
-  return '均衡';
-}
-
-/* ---------- 双方配型报告 ---------- */
-function buildPairReport(resultA, resultB, sceneId) {
-  const scene = SCENES.find(s => s.id === sceneId) || SCENES[0];
-  const comp = compatibility(resultA, resultB, scene.id);
-
-  const levelText = {
-    high: '高兼容', talk: '需协议', risk: '高风险', warn: '警示'
-  }[comp.level] || comp.level;
-
-  return {
-    a: resultA, b: resultB,
-    scene: scene,
-    comp: { level: comp.level, levelText, reason: comp.reason }
-  };
-}
-
-/* ---------- 维度净分用于展示 ---------- */
-function describeTotals(totals) {
-  const rows = [];
-  for (const d of ['X', 'Y', 'C', 'B', 'M', 'K', 'S']) {
-    const dim = DIMENSIONS[d];
-    const maximum = TEST_PLAN[d] * 2;
-    // 各维度题数不同，按本次计划的可得分范围展示；不是人群百分位。
-    const offset = Math.max(-50, Math.min(50, totals[d] / maximum * 50));
-    rows.push({
-      dim: d,
-      name: dim.name,
-      val: totals[d],
-      offset,
-      negative: dim.neg,
-      positive: dim.pos,
-      text: d === 'K' ? classifyLabels(totals).生育意愿 : sideText(d, totals[d])
-    });
+  if (!history?.length) return null;
+  const scenes = new Set(history.map(r => r.sceneId || 'legacy'));
+  const versions = new Set(history.map(r => r.assessmentVersion || 'legacy'));
+  if (scenes.size !== 1 || versions.size !== 1 || !history[0].sceneId
+      || history[0].assessmentVersion !== ASSESSMENT_VERSION) {
+    return { times: history.length, comparable: false, text: '不同场景或旧规则记录分别保留，不合并比较。' };
   }
-  return rows;
-}
-
-/* ============================================================
- * 效度验证：结局数据采集 + 统计 + 导出
- * ============================================================ */
-
-const OUTCOME_KEY = 'rct_outcomes_v1';
-
-/* ---------- 结局数据（localStorage） ---------- */
-function getOutcomes() {
-  try {
-    return JSON.parse(localStorage.getItem(OUTCOME_KEY)) || [];
-  } catch (e) {
-    return [];
-  }
+  const counts = new Map();
+  history.forEach(r => counts.set(r.type, (counts.get(r.type) || 0) + 1));
+  const maximum = Math.max(...counts.values());
+  const modes = [...counts].filter(([, count]) => count === maximum).map(([type]) => type);
+  const modeNames = modes.map(type => history.find(r => r.type === type).name);
+  return {
+    times: history.length, comparable: true,
+    names: modeNames, proportion: Math.round(maximum / history.length * 100),
+    text: history.length < 2 ? '只有一次记录，尚不能比较重复性。'
+      : counts.size === 1 ? '本场景分类重复' : '本场景分类存在变化'
+  };
 }
 
 function saveOutcome(outcome) {
   const list = getOutcomes();
-  outcome.timestamp = Date.now();
-  outcome.source = 'self_report';
-  outcome.verified = false;
-  const existing = outcome.resultId
-    ? list.findIndex(row => row.resultId === outcome.resultId)
-    : -1;
-  if (existing >= 0) list[existing] = outcome;
-  else list.push(outcome);
-  localStorage.setItem(OUTCOME_KEY, JSON.stringify(list));
-  return list;
+  const existing = list.findIndex(row => row.resultId === outcome.resultId);
+  const row = { ...outcome, timestamp: Date.now(), source: 'self_report', verified: false };
+  if (existing >= 0) list[existing] = row;
+  else list.push(row);
+  return writeList(OUTCOME_KEY, list);
 }
 
-function clearOutcomes() {
-  localStorage.removeItem(OUTCOME_KEY);
-}
-
-/* ---------- 导出工具 ---------- */
 function download(content, filename, type) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -192,71 +113,20 @@ function download(content, filename, type) {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
 function exportJSON(data, filename) {
   download(JSON.stringify(data, null, 2), filename, 'application/json');
 }
-
+function csvCell(value) {
+  let text = value == null ? '' : typeof value === 'object' ? JSON.stringify(value) : String(value);
+  if (/^[=+\-@\t\r]/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
+}
 function exportCSV(rows, filename) {
-  if (!rows || !rows.length) return;
-  const headers = Object.keys(rows[0]);
-  const csv = [
-    headers.join(','),
-    ...rows.map(r => headers.map(h => {
-      const v = r[h] == null ? '' : String(r[h]);
-      return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
-    }).join(','))
-  ].join('\n');
+  if (!rows?.length) return;
+  const headers = [...new Set(rows.flatMap(row => Object.keys(row)))];
+  const csv = [headers.map(csvCell).join(','),
+    ...rows.map(row => headers.map(key => csvCell(row[key])).join(','))].join('\r\n');
   download('\uFEFF' + csv, filename, 'text/csv;charset=utf-8');
-}
-
-/* ---------- 配型评级（仅凭两个类型代码，供效度统计） ---------- */
-function pairLevelByType(a, b) {
-  const ta = TYPES[a], tb = TYPES[b];
-  if (!ta || !tb) return 'warn';
-  if (ta.family === null || tb.family === null) return 'warn';
-
-  const FA = FAMILIES[ta.family], FB = FAMILIES[tb.family];
-  if (ta.family === tb.family) return 'high';              // 同家族
-  if (FA.axis === FB.axis && FA.rel !== FB.rel) return 'high'; // 主轴一致、关系互补
-  return 'talk';                                            // 主轴相反
-}
-
-/* ---------- 效标效度统计：配型评级 vs 真实结局 ---------- */
-function validityStats(outcomes) {
-  const paired = (outcomes || []).filter(o =>
-    o.type && o.partnerType && o.status && TYPES[o.type] && TYPES[o.partnerType]
-  );
-
-  if (paired.length === 0) {
-    return { count: 0, insufficient: true, descriptiveOnly: true, calibrated: false, groups: {} };
-  }
-
-  const groups = { high: [], talk: [], risk: [], warn: [] };
-  for (const o of paired) {
-    const level = pairLevelByType(o.type, o.partnerType);
-    groups[level].push(o);
-  }
-
-  const goodRate = arr => {
-    if (arr.length === 0) return null;
-    const good = arr.filter(o => o.status === 'good' || o.status === 'ok').length;
-    return Math.round(good / arr.length * 100);
-  };
-
-  return {
-    count: paired.length,
-    // 分组比例是描述统计，样本条数不能证明研究设计或测量效度合格。
-    insufficient: true,
-    descriptiveOnly: true,
-    calibrated: false,
-    groups: {
-      high: { n: groups.high.length, goodRate: goodRate(groups.high) },
-      talk: { n: groups.talk.length, goodRate: goodRate(groups.talk) },
-      risk: { n: groups.risk.length, goodRate: goodRate(groups.risk) },
-      warn: { n: groups.warn.length, goodRate: goodRate(groups.warn) }
-    }
-  };
 }
