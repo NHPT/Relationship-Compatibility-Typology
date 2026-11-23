@@ -16,6 +16,9 @@ function getHistory() {
 function saveResult(result) {
   const history = getHistory();
   result.timestamp = Date.now();
+  result.resultId = globalThis.crypto?.randomUUID?.()
+    || `rct-${result.timestamp}-${Math.random().toString(36).slice(2)}`;
+  result.assessmentVersion = 'rct-exploratory-2026-11-23-profile';
   history.push(result);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   return history;
@@ -45,6 +48,7 @@ function aggregate(history) {
 
   const m = mode(history.map(r => r.type));
   const consistency = m.count / history.length;
+  const sameVersion = new Set(history.map(r => r.assessmentVersion || 'legacy')).size === 1;
 
   const dims = ['X', 'Y', 'C', 'B', 'M', 'K', 'S'];
   const avgTotals = {};
@@ -52,18 +56,21 @@ function aggregate(history) {
 
   // 稳定性
   let stability;
-  if (history.length >= 2 && consistency === 1) stability = '高稳定';
+  if (!sameVersion) stability = '跨版本不可比较';
+  else if (m.value === 'SWING') stability = '倾向未明确';
+  else if (history.length >= 2 && consistency === 1) stability = '分类重复';
   else if (consistency >= 0.5) stability = '中稳定';
   else stability = '低稳定';
 
   // 用均值重新分类，得到"综合类型"
-  const combined = classify(avgTotals);
+  const combined = sameVersion ? classify(avgTotals) : null;
 
   return {
     times: history.length,
     stableType: m.value,
     consistency: Math.round(consistency * 100),
     stability,
+    sameVersion,
     avgTotals,
     combined,
     types: history.map(r => r.type)
@@ -71,15 +78,19 @@ function aggregate(history) {
 }
 
 /* ---------- 单次结果结构 ---------- */
-function buildSingleResult(totals) {
+function buildSingleResult(totals, answers = []) {
   const c = classify(totals);
   const t = TYPES[c.type] || TYPES.SWING;
   return {
     type: c.type,
+    measurementStatus: 'exploratory',
+    answers: answers.map(answer => ({ ...answer })),
     name: t.name,
-    axes: t.axes,
+    axes: c.type === 'SWING'
+      ? MATCH_AXES.map(axis => `${axis.topic}：${sideText(axis.dimension, totals[axis.dimension]) === '均衡' ? '未明确' : sideText(axis.dimension, totals[axis.dimension])}`).join(' · ')
+      : t.axes,
     core: t.core,
-    tags: t.tags,
+    tags: Object.entries(c.label).map(([key, value]) => `${key}：${value}`).join(' · '),
     strength: t.strength,
     risk: t.risk,
     isWarning: c.isWarning,
@@ -124,11 +135,17 @@ function describeTotals(totals) {
   const rows = [];
   for (const d of ['X', 'Y', 'C', 'B', 'M', 'K', 'S']) {
     const dim = DIMENSIONS[d];
+    const maximum = TEST_PLAN[d] * 2;
+    // 各维度题数不同，按本次计划的可得分范围展示；不是人群百分位。
+    const offset = Math.max(-50, Math.min(50, totals[d] / maximum * 50));
     rows.push({
       dim: d,
       name: dim.name,
       val: totals[d],
-      text: sideText(d, totals[d])
+      offset,
+      negative: dim.neg,
+      positive: dim.pos,
+      text: d === 'K' ? classifyLabels(totals).生育意愿 : sideText(d, totals[d])
     });
   }
   return rows;
@@ -152,7 +169,13 @@ function getOutcomes() {
 function saveOutcome(outcome) {
   const list = getOutcomes();
   outcome.timestamp = Date.now();
-  list.push(outcome);
+  outcome.source = 'self_report';
+  outcome.verified = false;
+  const existing = outcome.resultId
+    ? list.findIndex(row => row.resultId === outcome.resultId)
+    : -1;
+  if (existing >= 0) list[existing] = outcome;
+  else list.push(outcome);
   localStorage.setItem(OUTCOME_KEY, JSON.stringify(list));
   return list;
 }
@@ -208,7 +231,7 @@ function validityStats(outcomes) {
   );
 
   if (paired.length === 0) {
-    return { count: 0, insufficient: true, groups: {} };
+    return { count: 0, insufficient: true, descriptiveOnly: true, calibrated: false, groups: {} };
   }
 
   const groups = { high: [], talk: [], risk: [], warn: [] };
@@ -225,7 +248,10 @@ function validityStats(outcomes) {
 
   return {
     count: paired.length,
-    insufficient: paired.length < 10,
+    // 分组比例是描述统计，样本条数不能证明研究设计或测量效度合格。
+    insufficient: true,
+    descriptiveOnly: true,
+    calibrated: false,
     groups: {
       high: { n: groups.high.length, goodRate: goodRate(groups.high) },
       talk: { n: groups.talk.length, goodRate: goodRate(groups.talk) },

@@ -1,6 +1,7 @@
 /* ============================================================
  * RCT 关系适配类型学 — 计分与类型判定
- * 8 型 = 三主轴（人生主轴 × 关系形态 × 金钱模式）+ 2 警示型
+ * 8 型 = 三主轴（人生主轴 × 关系形态 × 金钱模式）
+ * 冲突与边界是附加观察标记，不覆盖主轴类型
  * ============================================================ */
 
 /* ---------- 计分：累加各维度净分 ---------- */
@@ -20,7 +21,7 @@ function side(val, threshold = 2) {
   return 'mid';
 }
 
-/* ---------- 置信度：离阈值越远越可信 ---------- */
+/* ---------- 阈值距离：仅反映分类边界，不是准确性置信度 ---------- */
 function confidence(val, threshold = 2) {
   const dist = Math.abs(val) - threshold;
   if (dist >= 3) return '高';
@@ -28,24 +29,13 @@ function confidence(val, threshold = 2) {
   return '低';
 }
 
-/* ---------- 类型判定（警示优先 → 三主轴 → 标签） ---------- */
+/* ---------- 类型判定（三主轴 + 独立观察标记 + 标签） ---------- */
 function classify(totals) {
-  // 1) 警示优先
   const warnings = [];
   if (totals.C >= 3) warnings.push('E');
   if (totals.B >= 3) warnings.push('F');
 
-  if (warnings.length > 0) {
-    return {
-      type: warnings.join('/'),
-      isWarning: true,
-      warnings,
-      totals,
-      label: classifyLabels(totals)
-    };
-  }
-
-  // 2) 三主轴
+  // 无论是否触发观察规则，都保留三主轴归纳。
   const x = side(totals.X); // pos=进取 neg=安稳
   const y = side(totals.Y); // pos=独立 neg=共生
   const m = side(totals.M); // pos=体验 neg=规划
@@ -65,8 +55,8 @@ function classify(totals) {
 
   return {
     type,
-    isWarning: false,
-    warnings: [],
+    isWarning: warnings.length > 0,
+    warnings,
     x, y, m,
     xVal: totals.X,
     yVal: totals.Y,
@@ -98,96 +88,95 @@ function classifyLabels(totals) {
 }
 
 /* ============================================================
- * 类型画像数据（8 型 + 2 警示 + 摇摆）
+ * 类型画像数据（8 型 + 未明确；E/F 兼容旧记录及观察标记）
  * ============================================================ */
 const TYPES = {
   A1: {
     code: 'A1', name: '安稳共栖·稳重型', family: 'A',
     axes: '安稳守成 × 深度共生 × 规划积累',
-    core: '求稳恋家、重陪伴，金钱保守、精打细算',
-    tags: '定居扎根 · 生育意愿较高',
-    strength: '稳定顾家、经济稳妥，是长期关系的压舱石',
-    risk: '生活偏平淡、过度依赖；过于节俭可能压抑共同体验'
+    core: '本次回答偏向稳定目标、共同参与和提前安排金钱',
+    strength: '共同目标与预算安排可能比较明确',
+    risk: '需协商各自空间及临时开支'
   },
   A2: {
     code: 'A2', name: '安稳共栖·温情型', family: 'A',
     axes: '安稳守成 × 深度共生 × 即时体验',
-    core: '求稳恋家、重陪伴，舍得为亲密和体验花钱',
-    tags: '定居扎根 · 生育意愿较高',
-    strength: '温暖体贴，会把日子过得有温度',
-    risk: '体验型消费与稳定诉求可能冲突；依赖度高'
+    core: '本次回答偏向稳定目标、共同参与和当前体验',
+    strength: '可能重视共同活动与当下体验',
+    risk: '需协商体验支出与长期预算'
   },
   B1: {
     code: 'B1', name: '安稳自在·克制型', family: 'B',
     axes: '安稳守成 × 独立并置 × 规划积累',
-    core: '求稳但重个人空间，金钱克制、边界清晰',
-    tags: '定居扎根 · 冲突偏直面',
-    strength: '情绪稳定、边界清楚、经济理性，最好相处',
-    risk: '太独立导致亲密感不足；过于克制显得冷'
+    core: '本次回答偏向稳定目标、个人空间和提前安排金钱',
+    strength: '可能更愿意明确各自任务与预算',
+    risk: '需协商共同参与程度和支出安排'
   },
   B2: {
     code: 'B2', name: '安稳自在·随性型', family: 'B',
     axes: '安稳守成 × 独立并置 × 即时体验',
-    core: '求稳但重个人空间，花钱随性、重体验',
-    tags: '定居扎根 · 冲突偏直面',
-    strength: '自洽、会享受、不拖累人',
-    risk: '独立 + 随性，亲密感不足且难以稳定绑定'
+    core: '本次回答偏向稳定目标、个人空间和当前体验',
+    strength: '可能重视各自空间和自主活动',
+    risk: '需协商共同时间与体验预算'
   },
   C1: {
     code: 'C1', name: '并肩进取·务实型', family: 'C',
     axes: '进取攀登 × 深度共生 × 规划积累',
-    core: '上进且重关系，目标感强、金钱务实',
-    tags: '定居半流动 · 节奏快',
-    strength: '有冲劲、会规划，适合共同搞事业',
-    risk: '事业与关系冲突；过于务实可能牺牲体验'
+    core: '本次回答偏向发展机会、共同参与和提前安排金钱',
+    strength: '可能愿意共同讨论目标与资源计划',
+    risk: '需协商目标变化、参与程度与资源投入'
   },
   C2: {
     code: 'C2', name: '并肩进取·激情型', family: 'C',
     axes: '进取攀登 × 深度共生 × 即时体验',
-    core: '上进且重关系，目标感强、舍得投入体验',
-    tags: '定居半流动 · 节奏快',
-    strength: '有冲劲、有热情，能带动关系往前',
-    risk: '节奏快叠加高消费，内耗大'
+    core: '本次回答偏向发展机会、共同参与和当前体验',
+    strength: '可能愿意共同尝试新活动或机会',
+    risk: '需协商资源投入与可承受的变化'
   },
   D1: {
     code: 'D1', name: '自由追梦·理性型', family: 'D',
     axes: '进取攀登 × 独立并置 × 规划积累',
-    core: '上进且爱自由，金钱理性、边界强',
-    tags: '强流动 · 生育待定/偏低',
-    strength: '单兵强、自驱、不拖累人',
-    risk: '难长期绑定；定居/生育是硬分歧'
+    core: '本次回答偏向发展机会、个人空间和提前安排金钱',
+    strength: '可能更愿意自主推进并安排资源',
+    risk: '需协商共同目标、任务接口与空间需求'
   },
   D2: {
     code: 'D2', name: '自由追梦·洒脱型', family: 'D',
     axes: '进取攀登 × 独立并置 × 即时体验',
-    core: '上进且爱自由，重体验、活得通透',
-    tags: '强流动 · 生育待定/偏低',
-    strength: '创造力强、不内耗、敢于探索',
-    risk: '不愿安顿、消费随性，难长期绑定'
+    core: '本次回答偏向发展机会、个人空间和当前体验',
+    strength: '可能更愿意自主尝试新机会',
+    risk: '需协商资源投入、责任分工与参与程度'
   },
   E: {
-    code: 'E', name: '回避压抑型', family: null,
-    axes: '警示型（冲突回避主导）',
-    core: '遇冲突冷处理、翻旧账、难修复',
+    code: 'E', name: '冲突回避倾向', family: null,
+    axes: '观察标记（冲突相关回答）',
+    core: '部分回答偏向推迟或回避分歧',
     tags: '—',
     strength: '—',
-    risk: '冷战死锁，问题永不解决，是长期关系头号杀手'
+    risk: '需了解暂停后是否重返沟通；此标记不能证明冲突无法修复'
   },
   F: {
-    code: 'F', name: '边界模糊型', family: null,
-    axes: '警示型（边界模糊主导）',
-    core: '忠诚/异性边界或原生家庭边界不清',
+    code: 'F', name: '边界待澄清', family: null,
+    axes: '观察标记（交往与家庭边界回答）',
+    core: '部分回答涉及不同的交往或家庭决策边界',
     tags: '—',
     strength: '—',
-    risk: '信任危机；父母或外部力量过度介入关系'
+    risk: '当前把不同边界合并计分，不能据此判断不忠或不能独立'
+  },
+  'E/F': {
+    code: 'E/F', name: '冲突与边界观察标记', family: null,
+    axes: '冲突、边界相关回答均触发当前观察规则',
+    core: '本次回答需要分别澄清冲突处理和交往或家庭边界',
+    strength: '—',
+    risk: '两个标记不代表同一种问题，也不能作为人品或关系结局判断'
   },
   SWING: {
-    code: 'SWING', name: '摇摆型', family: null,
-    axes: '主轴未定型',
-    core: '某主轴倾向处于均衡/矛盾状态',
+    code: 'SWING', name: '倾向未明确', family: null,
+    axes: '本次未满足类型阈值',
+    core: '一条或多条主轴没有明确的分类方向',
     tags: '—',
     strength: '—',
-    risk: '行为不一致或处于人生转折期，需拉长观察'
+    risk: '可能与题目、情境或居中选择有关，不能据此判断人格不稳定'
   }
 };
 
@@ -198,6 +187,20 @@ const FAMILIES = {
   C: { axis: 'pos', rel: 'neg' }, // 进取 × 共生
   D: { axis: 'pos', rel: 'pos' }  // 进取 × 独立
 };
+
+const NORMAL_TYPES = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
+const MATCH_AXES = [
+  { key: 'x', dimension: 'X', topic: '目标取向', agreement: '目标与发展节奏' },
+  { key: 'y', dimension: 'Y', topic: '相处方式', agreement: '共同时间与各自空间' },
+  { key: 'm', dimension: 'M', topic: '金钱偏好', agreement: '预算、储蓄与支出安排' }
+];
+
+function typeProfile(typeCode) {
+  const type = TYPES[typeCode];
+  const family = type && FAMILIES[type.family];
+  if (!family) return null;
+  return { x: family.axis, y: family.rel, m: typeCode.endsWith('1') ? 'neg' : 'pos' };
+}
 
 /* ============================================================
  * 配型判断
@@ -219,8 +222,9 @@ function compatibility(a, b, scene) {
 
   // 生育硬冲突（标签层）
   const la = a.label, lb = b.label;
-  if ((la.生育意愿 === '想要孩子' && lb.生育意愿 === '不想要孩子') ||
-      (la.生育意愿 === '不想要孩子' && lb.生育意愿 === '想要孩子')) {
+  if (scene === '婚恋' &&
+      ((la.生育意愿 === '想要孩子' && lb.生育意愿 === '不想要孩子') ||
+       (la.生育意愿 === '不想要孩子' && lb.生育意愿 === '想要孩子'))) {
     return { level: 'risk', reason: '生育意愿硬冲突（一个要、一个不要），无中间解' };
   }
 
@@ -277,30 +281,38 @@ const SCENES = [
 ];
 
 /* ============================================================
- * 适配推荐（单人结果页用）
- * 返回 { best, talk, avoid } 类型代码数组
- *   best: 高兼容（同家族 或 主轴一致 + 关系形态互补）
- *   talk: 可磨合（人生主轴相反，需协议）
- *   avoid: 慎配（警示型 E/F）
+ * 类型适配参考（单人结果页用）
+ * 分组只描述三个设计主轴上的共同点与差异，不预测关系结局。
+ * 输入完整结果可保留未明确主轴及旧 E/F 记录中已有的倾向。
+ * best：已明确主轴均同向；talk：部分差异；different：三轴均不同。
+ * 没有任何明确主轴时仍返回待确认信息，不生成候选排名。
  * ============================================================ */
-function getMatchRecommendation(typeCode) {
-  const me = TYPES[typeCode];
-  if (!me || !me.family) return null; // 警示型/摇摆型不给推荐
+function getMatchRecommendation(resultOrCode) {
+  const totals = typeof resultOrCode === 'object' && resultOrCode?.totals;
+  const profile = totals
+    ? { x: side(totals.X), y: side(totals.Y), m: side(totals.M) }
+    : typeProfile(typeof resultOrCode === 'string' ? resultOrCode : resultOrCode?.type);
+  const knownAxes = MATCH_AXES.filter(axis =>
+    profile && (profile[axis.key] === 'pos' || profile[axis.key] === 'neg'));
+  const unknownAxes = MATCH_AXES.filter(axis => !knownAxes.includes(axis));
+  const best = [], talk = [], different = [];
+  const details = {};
 
-  const best = [], talk = [];
-  const NORMAL = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'];
-
-  for (const other of NORMAL) {
-    if (other === typeCode) continue;
-    const FA = FAMILIES[me.family];
-    const FB = FAMILIES[TYPES[other].family];
-    const sameAxis = FA.axis === FB.axis;
-    const sameRel = FA.rel === FB.rel;
-
-    if (TYPES[other].family === me.family) best.push(other);   // 同家族
-    else if (sameAxis && !sameRel) best.push(other);            // 主轴一致、关系互补
-    else talk.push(other);                                      // 主轴相反
+  if (knownAxes.length) {
+    for (const code of NORMAL_TYPES) {
+      const other = typeProfile(code);
+      const same = knownAxes.filter(axis => profile[axis.key] === other[axis.key]);
+      const differences = knownAxes.filter(axis => profile[axis.key] !== other[axis.key]);
+      details[code] = {
+        same: same.map(axis => `${axis.topic}（${DIMENSIONS[axis.dimension][other[axis.key]]}）`),
+        differences: differences.map(axis => axis.agreement),
+        unconfirmed: unknownAxes.map(axis => axis.topic)
+      };
+      if (!differences.length) best.push(code);
+      else if (knownAxes.length === 3 && differences.length === 3) different.push(code);
+      else talk.push(code);
+    }
   }
 
-  return { best, talk, avoid: ['E', 'F'] };
+  return { best, talk, different, details, knownAxes, unknownAxes, calibrated: false };
 }

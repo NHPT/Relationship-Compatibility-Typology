@@ -2,7 +2,7 @@
  * RCT 关系适配类型学 — 交互逻辑（答题流程 + 限时 + 渲染）
  * ============================================================ */
 
-const TIME_PER_QUESTION = 60; // 每题限时（秒）
+const TIME_PER_QUESTION = 60; // 阅读提示（秒）；结束后仍等待实际作答
 
 const state = {
   questions: [],
@@ -44,7 +44,7 @@ function initHome() {
 function fillPartnerOptions() {
   const sel = el('oc-partner');
   if (!sel || sel.options.length > 1) return;
-  ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'D1', 'D2'].forEach(c => {
+  [...NORMAL_TYPES, 'SWING'].forEach(c => {
     const o = document.createElement('option');
     o.value = c;
     o.textContent = `${c} ${TYPES[c].name}`;
@@ -56,7 +56,13 @@ function fillPartnerOptions() {
 function bindOutcomeAndExport() {
   el('btn-save-outcome').addEventListener('click', () => {
     if (!currentResult) return;
+    if (!el('oc-relation').value || !el('oc-duration').value || !el('oc-status').value) {
+      alert('请填写实际关系类型、时长和状态；不知道对方类型时可留空。');
+      return;
+    }
     saveOutcome({
+      resultId: currentResult.resultId,
+      assessmentVersion: currentResult.assessmentVersion,
       type: currentResult.type,
       name: currentResult.name,
       relation: el('oc-relation').value,
@@ -84,6 +90,7 @@ function startTest() {
   state.questions = generateTest();
   state.current = 0;
   state.answers = [];
+  state.locked = false;
   renderQuestion();
   show('quiz');
 }
@@ -96,6 +103,7 @@ function renderQuestion() {
   el('quiz-progress').textContent = `第 ${state.current + 1} / ${total} 题`;
   el('quiz-progress-bar').style.width = ((state.current / total) * 100) + '%';
   el('quiz-text').textContent = q.text;
+  el('quiz-sub').textContent = '选择自己通常会怎样处理';
 
   const optsBox = el('quiz-options');
   optsBox.innerHTML = '';
@@ -120,9 +128,8 @@ function tick() {
   renderTimer();
   if (state.timeLeft <= 0) {
     clearInterval(state.timer);
-    // 超时未答 → 记 0 分，自动下一题
-    state.answers.push({ dimension: state.questions[state.current].dimension, score: 0 });
-    advance();
+    // 未答不是中性回答；保留本题直到使用者实际作答。
+    el('quiz-sub').textContent = '阅读提示时间已到，请选择后继续';
   }
 }
 
@@ -138,7 +145,15 @@ function selectOption(btn, opt) {
   state.locked = true;
   clearInterval(state.timer);
 
-  state.answers.push({ dimension: state.questions[state.current].dimension, score: opt.score });
+  const question = state.questions[state.current];
+  state.answers.push({
+    questionId: question.id,
+    questionText: question.text,
+    dimension: question.dimension,
+    optionId: opt.idx,
+    optionText: opt.text,
+    score: opt.score
+  });
 
   // 明确选中态：选中项高亮，其余禁用
   document.querySelectorAll('.option').forEach(b => b.classList.add('disabled'));
@@ -163,7 +178,7 @@ function advance() {
 /* ---------- 完成测试 ---------- */
 function finishTest() {
   const totals = scoreTest(state.answers);
-  const result = buildSingleResult(totals);
+  const result = buildSingleResult(totals, state.answers);
   saveResult(result);
   renderSingleResult(result);
   show('result');
@@ -173,6 +188,10 @@ function finishTest() {
 function renderSingleResult(result) {
   currentResult = result;
   el('oc-saved').classList.add('hidden');
+  ['oc-relation', 'oc-duration', 'oc-status', 'oc-partner'].forEach(id => {
+    el(id).value = '';
+  });
+  updateHistoryBadge();
   const history = getHistory();
 
   el('result-type').textContent = result.name;
@@ -186,7 +205,7 @@ function renderSingleResult(result) {
 
   if (result.isWarning) {
     el('result-warn').classList.remove('hidden');
-    el('result-warn').textContent = '⚠ 警示型：' + result.warnings.map(w => TYPES[w].name).join('、') + '，建议先处理对应维度再谈匹配';
+    el('result-warn').textContent = '需要进一步了解：' + result.warnings.map(w => TYPES[w].name).join('、') + '。这些观察标记不覆盖个人类型，也不能单独判断关系结局。';
   } else {
     el('result-warn').classList.add('hidden');
   }
@@ -197,9 +216,10 @@ function renderSingleResult(result) {
     <div class="dim-row">
       <span class="dim-name">${esc(r.name)}</span>
       <div class="dim-bar-wrap">
-        <div class="dim-bar">
-          <div class="dim-bar-fill ${r.val > 0 ? 'pos' : (r.val < 0 ? 'neg' : 'mid')}" style="left:${Math.min(50, 50 + r.val * 8)}%;width:${Math.abs(r.val) * 8}%"></div>
+        <div class="dim-bar" role="img" aria-label="${esc(r.name)}：${esc(r.text)}，左端${esc(r.negative)}，右端${esc(r.positive)}">
+          <div class="dim-bar-fill ${r.val > 0 ? 'pos' : (r.val < 0 ? 'neg' : 'mid')}" style="left:${Math.min(50, 50 + r.offset)}%;width:${Math.abs(r.offset)}%"></div>
         </div>
+        <div class="dim-endpoints"><span>${esc(r.negative)}</span><span>${esc(r.positive)}</span></div>
       </div>
       <span class="dim-val">${esc(r.text)}</span>
     </div>
@@ -213,9 +233,9 @@ function renderSingleResult(result) {
   if (history.length >= 2) {
     const agg = aggregate(history);
     stabilityBox.innerHTML = `
-      <p>已测 <strong>${agg.times}</strong> 次 · 稳定类型 <strong>${TYPES[agg.stableType]?.name || agg.stableType}</strong>
-      · 一致率 <strong>${agg.consistency}%</strong> · <strong>${agg.stability}</strong></p>
-      ${agg.stability === '低稳定' ? '<p class="muted">⚠ 多次结果跳变，可能行为不一致、在伪装，或处于人生转折期，建议拉长观察。</p>' : ''}
+      <p>记录 <strong>${agg.times}</strong> 次 · 出现最多的分类 <strong>${esc(TYPES[agg.stableType]?.name || agg.stableType)}</strong>
+      · 占记录比例 <strong>${agg.consistency}%</strong> · <strong>${agg.stability}</strong></p>
+      <p class="muted">仅在同一人、相同规则版本和相近情境下可比较。分类重复不等于准确，分类变化不能用于判断隐瞒或说谎。</p>
     `;
     stabilityBox.classList.remove('hidden');
   } else {
@@ -228,42 +248,51 @@ function renderSingleResult(result) {
 /* ---------- 适配推荐 ---------- */
 function renderMatchRecommendation(result) {
   const box = el('result-match');
-  const reco = getMatchRecommendation(result.type);
+  const reco = getMatchRecommendation(result);
+  box.classList.remove('hidden');
 
-  if (!reco) {
-    if (result.type === 'SWING') {
-      box.innerHTML = '<h3 class="sec-title">适配推荐</h3><p class="muted">类型尚未定型（主轴摇摆），建议再测 1~2 次，待类型稳定后再看适配推荐。</p>';
-      box.classList.remove('hidden');
-    } else if (result.isWarning) {
-      box.innerHTML = '<h3 class="sec-title">适配推荐</h3><p class="muted">警示型需先处理冲突/边界维度，暂不给出适配推荐。</p>';
-      box.classList.remove('hidden');
-    } else {
-      box.classList.add('hidden');
-    }
+  if (!reco.knownAxes.length) {
+    box.innerHTML = `
+      <h3 class="sec-title">类型适配参考</h3>
+      <p class="muted">本次三条主轴均未明确，尚缺少列出类型候选的依据。可以先与对方讨论目标与发展节奏、共同时间与各自空间，以及预算、储蓄和支出安排。</p>
+      <p class="match-note muted">是否适合相处还需要了解双方实际行为、冲突处理和边界约定；单人结果不能确定对方的倾向。</p>
+    `;
     return;
   }
 
-  const fmt = codes => codes.map(c => {
-    const t = TYPES[c];
-    return t ? `<span class="match-chip">${c} ${t.name.split('·').pop()}</span>` : '';
+  const fmt = codes => codes.map(code => {
+    const detail = reco.details[code];
+    const reasons = [];
+    if (detail.same.length) reasons.push(`同向：${detail.same.join('、')}`);
+    if (detail.differences.length) reasons.push(`需协商：${detail.differences.join('、')}`);
+    if (detail.unconfirmed.length) reasons.push(`待确认：${detail.unconfirmed.join('、')}`);
+    return `<li class="match-candidate">
+      <span class="match-chip">${esc(code)} ${esc(TYPES[code].name)}</span>
+      <p class="muted">${esc(reasons.join('；'))}</p>
+    </li>`;
   }).join('');
+  const group = (codes, label, cls) => codes.length ? `
+    <div class="match-group">
+      <span class="match-label ${cls}">${label}</span>
+      <ul class="match-types">${fmt(codes)}</ul>
+    </div>
+  ` : '';
+  const partial = reco.unknownAxes.length
+    ? `<p class="match-note muted">本次${esc(reco.unknownAxes.map(axis => axis.topic).join('、'))}未明确。候选只比较已明确的 ${reco.knownAxes.length} 条主轴，其余仍待确认。</p>`
+    : '';
+  const observations = result.warnings?.length
+    ? '<p class="match-note muted">另需分别了解分歧是否会重新沟通，以及交往和家庭决策有哪些具体约定。观察标记不能判定一个人不适合所有类型。</p>'
+    : '';
 
   box.innerHTML = `
-    <h3 class="sec-title">适配推荐</h3>
-    <div class="match-group">
-      <span class="match-label good">最合适</span>
-      <div class="match-types">${fmt(reco.best)}</div>
-    </div>
-    <div class="match-group">
-      <span class="match-label talk">可磨合</span>
-      <div class="match-types">${fmt(reco.talk)}</div>
-    </div>
-    <div class="match-group">
-      <span class="match-label risk">慎配</span>
-      <div class="match-types">${fmt(reco.avoid)}</div>
-    </div>
+    <h3 class="sec-title">类型适配参考（待验证）</h3>
+    <p class="muted">根据目标取向、相处方式和金钱偏好列出候选与协商重点。偏好同向不保证适配，差异也不必然冲突；实际相处取决于双方意愿、约定与行为。</p>
+    ${partial}
+    ${group(reco.best, reco.unknownAxes.length ? '已知同向' : '三轴同向', 'good')}
+    ${group(reco.talk, '差异协商', 'talk')}
+    ${group(reco.different, '三轴差异', 'different')}
+    ${observations}
   `;
-  box.classList.remove('hidden');
 }
 
 /* ---------- 历史记录 ---------- */
@@ -276,8 +305,9 @@ function showHistory() {
     const agg = aggregate(history);
     box.innerHTML = `
       <div class="history-summary">
-        <p>共测 <strong>${history.length}</strong> 次 · 稳定类型 <strong>${TYPES[agg.stableType]?.name || agg.stableType}</strong>
-        · 一致率 <strong>${agg.consistency}%</strong> · <strong>${agg.stability}</strong></p>
+        <p>记录 <strong>${history.length}</strong> 次 · 出现最多的分类 <strong>${esc(TYPES[agg.stableType]?.name || agg.stableType)}</strong>
+        · 占记录比例 <strong>${agg.consistency}%</strong> · <strong>${agg.stability}</strong></p>
+        <p class="muted">这是当前浏览器的记录汇总，不是群体信度或效度结果；不同规则版本不能用于比较稳定性。</p>
       </div>
       ${history.slice().reverse().map(r => `
         <div class="history-item">

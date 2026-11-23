@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="RCT 关系适配类型学——通过场景选择识别关系兼容性，适用于婚恋、创业、伙伴、团队">
+  <meta name="description" content="RCT 关系适配类型学：通过日常场景选择梳理生活目标、相处习惯与决策偏好，生成个人类型画像，了解不同类型之间的共同点、差异与协商重点。">
   <title>RCT 关系适配类型学</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261123-profile">
 </head>
 <body>
   <div class="app">
@@ -20,13 +20,13 @@
             <p class="sub">Relationship Compatibility Typology</p>
           </div>
         </div>
-        <p class="lead">不测性格，只测<b>关系</b>。通过 20 个日常场景的选择，识别你在相处中的真实模式，判断你适合和什么样的人一起生活、一起做事、一起走远。</p>
+        <p class="lead">通过日常场景选择，梳理你的生活目标、相处习惯与决策偏好，生成个人类型画像，帮助你了解与不同类型相处时的共同点、差异和需要协商的问题。</p>
       </header>
 
       <div class="mode-cards">
         <button id="btn-single" class="mode-card">
           <span class="mode-title">开始测试</span>
-          <span class="mode-desc">20 个场景选择题 · 每题限时 60 秒<br>测完给出你的类型 + 适配推荐</span>
+          <span class="mode-desc">20 道题 · 7 项倾向 · 每题 60 秒阅读提示<br>个人类型 + 类型适配参考 · 超时仍可作答</span>
         </button>
         <button id="btn-history" class="mode-card">
           <span class="mode-title">历史记录</span>
@@ -35,7 +35,7 @@
       </div>
 
       <div class="home-foot">
-        <p class="muted">多次测试能提高准确性：每次题目随机生成、题面不同，测 2~3 次结果一致才可信。</p>
+        <p class="muted">当前为探索原型，类型与推荐规则尚未经过真实样本验证。多次结果一致只说明分类重复性，不等于准确，也不能据此预测关系长久。</p>
       </div>
     </section>
 
@@ -71,24 +71,26 @@
 
         <div class="result-grid">
           <div class="kv"><span class="k">核心特征</span><span id="result-core"></span></div>
-          <div class="kv"><span class="k">典型标签</span><span id="result-tags"></span></div>
-          <div class="kv"><span class="k">优势</span><span id="result-strength"></span></div>
-          <div class="kv"><span class="k">风险</span><span id="result-risk"></span></div>
+          <div class="kv"><span class="k">本次标签</span><span id="result-tags"></span></div>
+          <div class="kv"><span class="k">可能优势</span><span id="result-strength"></span></div>
+          <div class="kv"><span class="k">需留意</span><span id="result-risk"></span></div>
         </div>
 
         <div id="result-match" class="match-reco hidden"></div>
 
         <h3 class="sec-title">维度倾向</h3>
+        <p class="dim-explainer muted">位置表示本次作答的倾向方向，不代表能力、优劣或在人群中的排名。</p>
         <div id="result-dims" class="dims"></div>
 
         <div id="result-stability" class="stability hidden"></div>
 
         <div class="outcome-box">
           <h3 class="sec-title">研究反馈（可选）</h3>
-          <p class="muted">为校准系统，可填写你与某人的真实相处结局（仅存本地，可导出）。</p>
+          <p class="muted">可记录你与某人的实际相处情况。仅保存在当前浏览器，不会上传；导出后可供后续研究整理，保存反馈不会自动校准结果。</p>
           <div class="outcome-form">
             <label class="oc-field"><span>关系类型</span>
               <select id="oc-relation">
+                <option value="" selected disabled>请选择实际关系类型</option>
                 <option value="婚恋">婚恋伴侣</option>
                 <option value="创业">搭伙创业</option>
                 <option value="伙伴">长期伙伴</option>
@@ -97,6 +99,7 @@
             </label>
             <label class="oc-field"><span>相处时长</span>
               <select id="oc-duration">
+                <option value="" selected disabled>请选择相处时长</option>
                 <option value="short">&lt;6 个月</option>
                 <option value="mid">6 个月–2 年</option>
                 <option value="long">2 年以上</option>
@@ -104,17 +107,18 @@
             </label>
             <label class="oc-field"><span>关系状态</span>
               <select id="oc-status">
+                <option value="" selected disabled>请选择实际状态</option>
                 <option value="good">稳定和谐</option>
                 <option value="ok">一般</option>
                 <option value="bad">矛盾较多</option>
                 <option value="ended">已结束</option>
               </select>
             </label>
-            <label class="oc-field"><span>对方类型</span>
-              <select id="oc-partner"></select>
+            <label class="oc-field"><span>对方的自测类型（未知时留空）</span>
+              <select id="oc-partner"><option value="">不知道或尚未测试</option></select>
             </label>
-            <button id="btn-save-outcome" class="btn btn-ghost">保存反馈</button>
-            <span id="oc-saved" class="muted hidden">已保存 ✓</span>
+            <button id="btn-save-outcome" class="btn btn-ghost">保存到本地</button>
+            <span id="oc-saved" class="muted hidden" role="status">已保存到当前浏览器 ✓</span>
           </div>
         </div>
 
@@ -140,9 +144,9 @@
 
   </div>
 
-  <script src="js/questionBank.js"></script>
-  <script src="js/scoring.js"></script>
-  <script src="js/report.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/questionBank.js?v=20261123-profile"></script>
+  <script src="js/scoring.js?v=20261123-profile"></script>
+  <script src="js/report.js?v=20261123-profile"></script>
+  <script src="js/app.js?v=20261123-profile"></script>
 </body>
 </html>

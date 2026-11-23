@@ -298,6 +298,15 @@ html, body {
 .dim-bar-fill.pos { background: var(--green); }
 .dim-bar-fill.neg { background: var(--blue); }
 .dim-bar-fill.mid { background: #c9c9cd; }
+.dim-explainer { margin-bottom: 14px; font-size: 12px; }
+.dim-endpoints {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
 
 /* 稳定性 */
 .stability {
@@ -351,7 +360,7 @@ html, body {
 .match-group:last-child { border-bottom: none; }
 .match-label {
   flex-shrink: 0;
-  width: 56px;
+  width: 68px;
   padding: 4px 0;
   border-radius: 999px;
   font-size: 12px;
@@ -361,13 +370,22 @@ html, body {
 .match-label.good { background: var(--green-soft); color: var(--green-strong); }
 .match-label.talk { background: var(--warn-soft); color: var(--warn); }
 .match-label.risk { background: var(--danger-soft); color: var(--danger); }
+.match-label.different { background: #edf2fb; color: #315d94; }
 .match-types {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 12px;
   flex: 1;
+  min-width: 0;
+  list-style: none;
+}
+.match-candidate p {
+  margin-top: 5px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 .match-chip {
+  display: inline-block;
   padding: 4px 10px;
   background: var(--bg);
   border: 1px solid var(--line);
@@ -375,6 +393,7 @@ html, body {
   font-size: 13px;
   color: var(--ink);
 }
+.match-note { margin-top: 10px; }
 
 /* ---------- 研究反馈 ---------- */
 .outcome-box {
@@ -430,4 +449,5 @@ html, body {
   .result-card { padding: 20px; }
   .quiz-text { font-size: 18px; }
   .brand-text h1 { font-size: 22px; }
+  .match-group { flex-direction: column; gap: 8px; }
 }
