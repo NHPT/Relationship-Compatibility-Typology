@@ -160,14 +160,6 @@ test('corrupt storage stays intact and quota failures keep exportable in-memory 
   assert.deepEqual(blocked.list('reports'), [r]); assert.equal(blocked.issues.get('reports').kind, 'write');
 });
 
-test('comparison uses actual compatible reports and independent confirmations; risk has priority', () => {
-  const a = D.snapshot(draft('marriage')), b = D.snapshot(draft('marriage'));
-  const agreement = { domainId: 5, statement: '共同预算、重大支出分别确认', partyAResponse: 'accept', partyBResponse: 'accept' };
-  assert.equal(E.compare({ type: 'T01' }, { type: 'T13' }).status, 'insufficient');
-  assert.equal(E.compare(a.derived, b.derived).domains[4].status, 'unknown');
-  assert.equal(E.compare(a.derived, b.derived, [agreement]).domains[4].status, 'confirmed_agreement');
-  assert.equal(E.compare(a.derived, b.derived, [{ ...agreement, partyBResponse: 'pending' }]).domains[4].status, 'unknown');
-  assert.equal(E.compare(a.derived, b.derived, [{ ...agreement, partyBResponse: 'reject' }]).domains[4].status, 'difference');
-  b.derived = E.summarize('marriage', { ...b.answers, 'M05-02': 'M05-02:4' });
-  assert.equal(E.compare(a.derived, b.derived, [agreement]).domains[4].status, 'risk_review');
+test('the active engine has no two-person comparison function', () => {
+  assert.equal(E.compare, undefined);
 });

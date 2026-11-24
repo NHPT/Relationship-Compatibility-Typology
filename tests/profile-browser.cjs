@@ -4,6 +4,7 @@ const path = require('node:path');
 const { chromium } = require('../.git/rct-ui/node_modules/playwright');
 const D = require('../js/depth/data.js');
 const P = require('../js/depth/profile.js');
+const I = require('../js/depth/identity.js');
 const fixtures = require('./fixtures/depth-types.json');
 const base = process.env.RCT_URL || 'http://localhost:8090/';
 const output = path.resolve(process.env.RCT_ARTIFACT_DIR || '.git/depth-validation');
@@ -45,11 +46,15 @@ async function chartBounds(page) {
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(base);
     for (const sample of fixtures.samples) {
-      const r = report('personal', sample.answers), type = P.types[sample.target];
+      const r = report('personal', sample.answers), type = I.personal[sample.target];
       await display(page, r); await privacy(page); await chartBounds(page);
-      assert.equal(await page.locator('.profile-intro h2').textContent(), type.title);
+      assert.equal(await page.locator('.profile-intro h2').textContent(), type.name + '型');
       assert.equal(await page.locator('.profile-emblem svg').getAttribute('aria-label'), type.animal + '象征图案');
       assert.equal(await page.locator('.profile-dimension').count(), 8);
+      assert.equal(await page.locator('.profile-dimension[open]').count(), 0);
+      assert.equal(await page.locator('[role="tab"]').count(), 3);
+      assert.equal(await page.locator('#btn-pair, #page-depth-pair, #report-open-pair').count(), 0);
+      assert.equal(await page.evaluate(() => typeof RCT_DEPTH.pairHub), 'undefined');
       await page.locator('.profile-hero').screenshot({ path: path.join(output, `symbol-${sample.target}.png`) });
     }
     facts.push('all 14 real classifier fixtures render distinct animal symbols and descriptions without question details');
@@ -74,9 +79,25 @@ async function chartBounds(page) {
     assert.deepEqual(raw.answers, mixed.answers); assert.deepEqual(raw.notes, old.notes);
     await page.locator('[data-focus-axis="transparency"]').focus();
     await page.keyboard.press('Enter');
-    assert.equal(await page.evaluate(() => document.activeElement.id), 'profile-axis-transparency');
+    assert.equal(await page.evaluate(() => document.activeElement.parentElement.id), 'profile-axis-transparency');
+    assert.equal(await page.locator('#profile-axis-transparency').getAttribute('open'), '');
     await page.locator('[data-focus-axis="commitment"]').click();
-    assert.equal(await page.evaluate(() => document.activeElement.id), 'profile-axis-commitment');
+    assert.equal(await page.evaluate(() => document.activeElement.parentElement.id), 'profile-axis-commitment');
+    await page.locator('#profile-axis-transparency summary').click();
+    await page.locator('#profile-axis-commitment summary').click();
+    await page.locator('#affinity-tab-aligned').focus();
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('#affinity-tab-complement').getAttribute('aria-selected'), 'true');
+    assert.equal(await page.locator('#affinity-panel-aligned').isVisible(), false);
+    await page.locator('#affinity-tab-friction').click();
+    assert.equal(await page.locator('#affinity-panel-friction').isVisible(), true);
+    const match = page.locator('#affinity-panel-friction .affinity-entry').first();
+    if (await match.count()) {
+      await match.locator('summary').click();
+      assert.equal(await match.locator('.affinity-discussion').isVisible(), true);
+    }
+    await page.locator('#affinity-tab-aligned').click();
+    assert.ok((await page.locator('#depth-report').innerText()).length < 1800);
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(output, 'profile-desktop-mixed.png') });
     await page.locator('#profile-radar').screenshot({ path: path.join(output, 'profile-desktop-radar.png') });
@@ -89,22 +110,28 @@ async function chartBounds(page) {
     await display(page, report('personal', riskChoices)); await privacy(page);
     const disclosure = page.locator('.profile-caution').filter({ hasText: '重要信息的隐瞒' });
     assert.ok((await disclosure.textContent()).includes('同时也呈现'));
+    await disclosure.locator('summary').click();
+    assert.equal(await disclosure.locator('.caution-detail').isVisible(), true);
     assert.equal(await page.locator('.profile-caution.priority').count() > 0, true);
+    if (await page.locator('[role="tab"]').count()) {
+      assert.equal(await page.locator('#affinity-tab-aligned').innerText(), '共同点参考' + await page.locator('#affinity-tab-aligned span').innerText());
+      assert.equal(await page.locator('.affinity-risk-note').isVisible(), true);
+    }
     facts.push('repeated and safety risks remain explicit alongside counterinformation');
 
     await display(page, report('marriage', { 'M05-02': 'M05-02:4', 'M08-02': 'M08-02:4' }));
     await privacy(page); await chartBounds(page);
-    assert.equal(await page.locator('.profile-domains details').count(), 12);
+    assert.equal(await page.locator('.profile-domains .topic-row').count(), 12);
     assert.ok((await page.locator('.profile-radar').textContent()).includes('共同财务'));
-    const a = report('marriage'), b = report('marriage', { 'M05-02': 'M05-02:4' });
-    await page.evaluate(rs => {
-      rs.forEach(r => RCT_DEPTH.storage.append('reports', r)); RCT_DEPTH.pairHub();
-    }, [a, b]);
-    await page.locator('#pair-a').selectOption(a.reportId); await page.locator('#pair-b').selectOption(b.reportId);
-    await page.locator('#pair-load').click(); await privacy(page, '#pair-content');
-    assert.equal(await page.locator('.pair-profiles').count(), 12);
-    assert.ok((await page.locator('#pair-result-5').textContent()).includes('边界风险待核对'));
-    facts.push('marriage radar and 12 domain interpretations; pair report presents both narratives without answer lists');
+    await display(page, report('marriage'));
+    assert.equal(await page.locator('[role="tab"]').count(), 3);
+    assert.equal(await page.locator('.affinity-entry').count(), 8);
+    await page.locator('.profile-domains > summary').click();
+    await page.locator('.profile-domains .topic-row').first().locator('summary').click();
+    assert.equal(await page.locator('.profile-domains .topic-row').first().locator('p').first().isVisible(), true);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: path.join(output, 'profile-desktop-marriage.png'), fullPage: true });
+    facts.push('marriage has its own compact names, eight-axis radar, eight type references and 12 optional domain interpretations; no pair interface');
     assert.deepEqual(errors, []);
     await context.close();
     for (const width of [375, 320]) {
@@ -115,7 +142,13 @@ async function chartBounds(page) {
       await phone.locator('.profile-radar-section').scrollIntoViewIfNeeded();
       await phone.screenshot({ path: path.join(output, `profile-mobile-${width}-radar.png`) });
       await phone.locator('[data-focus-axis="fairness"]').click();
-      assert.equal(await phone.evaluate(() => document.activeElement.id), 'profile-axis-fairness');
+      assert.equal(await phone.evaluate(() => document.activeElement.parentElement.id), 'profile-axis-fairness');
+      await phone.locator('#affinity-tab-complement').click();
+      assert.equal(await phone.locator('#affinity-panel-complement').isVisible(), true);
+      await chartBounds(phone);
+      await display(phone, report('marriage'));
+      await chartBounds(phone);
+      await phone.screenshot({ path: path.join(output, `profile-mobile-${width}-marriage.png`), fullPage: true });
       const blank = D.newDraft('marriage');
       blank.order.forEach(id => D.choose(blank, id, 'skipped'));
       await display(phone, D.snapshot(blank)); await chartBounds(phone);

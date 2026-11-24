@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="RCT 人性与婚恋深度测评：48个人主题、14种描述原型、12个婚恋领域。用画像描述、维度解析、雷达图与动物象征理解行为倾向。">
   <title>RCT 人性与婚恋深度测评</title>
-  <link rel="stylesheet" href="css/style.css?v=20261124-depth-v3">
-  <link rel="stylesheet" href="css/depth.css?v=20261124-depth-v3">
+  <link rel="stylesheet" href="css/style.css?v=20261124-depth-v4">
+  <link rel="stylesheet" href="css/depth.css?v=20261124-depth-v4">
 </head>
 <body>
-  <main class="app" id="depth-app" data-release="20261124-depth-v3">
+  <main class="app" id="depth-app" data-release="20261124-depth-v4">
     <section id="page-home" class="page active">
       <header class="hero">
         <div class="brand"><span class="logo">RCT</span><div class="brand-text">
@@ -21,7 +21,7 @@
       <div class="mode-cards">
         <button type="button" class="mode-card" id="btn-exploration" data-start="personal" style="--scene-color:var(--green-strong)">
           <span class="mode-kicker">48 主题 / 14 描述原型</span><span class="mode-title">个人深度测评</span>
-          <span class="mode-desc">守约、责任、利益、边界、创造与执行。用维度解析与雷达图呈现你的行为画像。</span>
+          <span class="mode-desc">守约、责任、利益、边界、创造与执行。发现你的主要取向与相处特点。</span>
           <span class="mode-count">96 题核心 · 自动续答 <span aria-hidden="true">↗</span></span>
         </button>
         <button type="button" class="mode-card" data-scene="love" data-start="marriage" style="--scene-color:var(--green-strong)">
@@ -32,7 +32,6 @@
       </div>
       <div class="home-history">
         <button type="button" class="btn btn-ghost" id="btn-history">报告与记录</button>
-        <button type="button" class="btn btn-ghost" id="btn-pair">双方婚恋对照</button>
       </div>
       <p class="home-foot muted">核心答完即可看报告，再按需要自动补问。个人最多 144 题，婚恋最多 72 题；无需选择模块。只在当前浏览器保存，本人决定是否导出和分享。</p>
       <details class="depth-library"><summary>14 类怎样形成，结果怎样使用</summary><div id="type-library"></div>
@@ -75,7 +74,7 @@
       <p class="muted">新旧版本分别保存；旧 44 题与完整旧题库记录按原文查看，不能换算为新结果。</p>
       <div id="depth-history"></div>
       <h2 class="sec-title">导入本人主动提供的报告</h2>
-      <p class="muted">导入只在本地读取文件。双方对照需要两份同版本婚恋报告，类型名称不能替代实际作答。</p>
+      <p class="muted">导入只在本地读取文件。同版本报告可查看当前画像，其他版本保留原文。</p>
       <label class="oc-field import-field"><span>选择 JSON 报告文件</span><input type="file" id="report-import" accept=".json,application/json"></label>
       <p id="import-status" class="storage-note muted" role="status"></p>
       <div class="actions">
@@ -91,29 +90,15 @@
       <details class="depth-library"><summary>查看完整原始记录</summary><pre id="raw-content"></pre></details>
       <button type="button" class="btn btn-ghost" id="raw-export">导出原记录</button>
     </section>
-    <section id="page-depth-pair" class="page">
-      <div class="quiz-scene-line"><strong>双方婚恋对照</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
-      <h2 class="depth-title">理解彼此的相处倾向，确认共同约定</h2>
-      <p class="muted">由两人主动提供各自的报告。A、B 是本次代号；同型不等于合适，异型不等于不合适。未确认的共同约定不能算一致。</p>
-      <div class="pair-selectors">
-        <label class="oc-field"><span>A 的婚恋报告</span><select id="pair-a"></select></label>
-        <label class="oc-field"><span>B 的婚恋报告</span><select id="pair-b"></select></label>
-      </div>
-      <div class="actions"><button type="button" id="pair-load" class="btn">读取两份报告</button><button type="button" id="pair-import" class="btn btn-ghost">导入报告</button></div>
-      <p id="pair-status" class="storage-note muted" role="status"></p>
-      <div id="pair-content"></div>
-      <div id="pair-actions" class="actions hidden">
-        <button type="button" id="pair-save" class="btn">保存本次对照快照</button>
-        <button type="button" id="pair-export" class="btn btn-ghost">导出本次对照</button>
-      </div>
-    </section>
     <noscript>本测评需要开启 JavaScript 才能在本地处理回答。</noscript>
   </main>
-  <script src="js/depth/model.js?v=20261124-depth-v3"></script>
-  <script src="js/depth/engine.js?v=20261124-depth-v3"></script>
-  <script src="js/depth/data.js?v=20261124-depth-v3"></script>
-  <script src="js/depth/profile.js?v=20261124-depth-v3"></script>
-  <script src="js/depth/visuals.js?v=20261124-depth-v3"></script>
-  <script src="js/depth/app.js?v=20261124-depth-v3"></script>
+  <script src="js/depth/model.js?v=20261124-depth-v4"></script>
+  <script src="js/depth/engine.js?v=20261124-depth-v4"></script>
+  <script src="js/depth/data.js?v=20261124-depth-v4"></script>
+  <script src="js/depth/identity.js?v=20261124-depth-v4"></script>
+  <script src="js/depth/affinities.js?v=20261124-depth-v4"></script>
+  <script src="js/depth/profile.js?v=20261124-depth-v4"></script>
+  <script src="js/depth/visuals.js?v=20261124-depth-v4"></script>
+  <script src="js/depth/app.js?v=20261124-depth-v4"></script>
 </body>
 </html>

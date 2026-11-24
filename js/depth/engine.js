@@ -107,27 +107,6 @@
     const asked = Object.keys(answers).filter(id => lookup.get(id)?.scope === scope && lookup.get(id).phase === 'followup').length;
     return entries.slice(0, Math.max(0, cap - asked));
   }
-  function compare(a, b, agreements = []) {
-    if (!a || !b || a.version !== model.version || b.version !== model.version ||
-        a.scope !== 'marriage' || b.scope !== 'marriage' || a.status !== 'interpretable' || b.status !== 'interpretable')
-      return { status: 'insufficient', reason: '需要两份同版本的婚恋报告，类型名称不能替代实际资料。', domains: [] };
-    const domains = model.marriageDomains.map(d => {
-      const x = a.topics.find(t => t.id === d.id), y = b.topics.find(t => t.id === d.id);
-      const risksA = a.rows.filter(r => r.topicId === d.id && r.tags.some(t => model.tags[t].kind === 'risk'));
-      const risksB = b.rows.filter(r => r.topicId === d.id && r.tags.some(t => model.tags[t].kind === 'risk'));
-      const agreement = agreements.find(g => g.domainId === d.id);
-      const confirmed = agreement && typeof agreement.statement === 'string' && agreement.statement.trim() &&
-        ['accept', 'reject'].includes(agreement.partyAResponse) && ['accept', 'reject'].includes(agreement.partyBResponse);
-      const status = risksA.length || risksB.length ? 'risk_review'
-        : !x?.covered || !y?.covered || !confirmed ? 'unknown'
-        : agreement.partyAResponse === 'accept' && agreement.partyBResponse === 'accept' ? 'confirmed_agreement'
-        : 'difference';
-      return { id: d.id, name: d.name, status, risksA, risksB, agreement: confirmed ? agreement : null,
-        coverageA: x?.core ?? 0, coverageB: y?.core ?? 0,
-        boundary: '明确一致指双方对这条约定均表示接受；不证明实际执行或未来关系成功。' };
-    });
-    return { status: 'compared', domains };
-  }
-  root.RCT_ENGINE = { collect, summarize, classify, followups, compare };
+  root.RCT_ENGINE = { collect, summarize, classify, followups };
   if (typeof module !== 'undefined') module.exports = root.RCT_ENGINE;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,7 +1,9 @@
 (function (root) {
   'use strict';
   const M = root.RCT_MODEL || require('./model.json');
-  const PRESENTATION_VERSION = 'rct-profile-v1';
+  const I = root.RCT_IDENTITY || require('./identity.js');
+  const A = root.RCT_AFFINITIES || require('./affinities.js');
+  const PRESENTATION_VERSION = 'rct-profile-v2';
   const types = {
     T01: { animal: '大象', symbol: 'elephant', theme: '守约', title: '原则守约型',
       description: '你更重视约定、真实信息与规则的一致性。面对取舍时，你倾向先确认哪些责任需要承担、哪些变化应当告知。',
@@ -117,7 +119,28 @@
     '学习与复盘': ['面对错误与反馈', '受到质疑或遇到错误证据时，存在否认或拒绝核对的倾向，可能使相同问题重复出现。', '核对证据并修正'],
     '冲突与报复': ['冲突后的报复倾向', '面对争执或受损感时，存在用报复或破坏回应的倾向，可能加深关系与资源上的损失。', '暂无同指标的相反行动信息']
   };
+  const riskShort = {
+    '信息透明': '重要事实可能没有及时告知。',
+    '承诺履行': '约定改变时可能缺少协商与交接。',
+    '责任与修复': '压力下可能推责或回避补救。',
+    '自主与边界': '拒绝、隐私或自主可能受到施压。',
+    '公平互惠': '共同资源或成本可能未经同意分配。',
+    '关怀与照料': '困难处境可能被贬低或利用。',
+    '风险管理': '明显代价或兜底责任可能被忽略。',
+    '学习与复盘': '错误与反馈可能没有得到核对。',
+    '冲突与报复': '冲突后可能以报复或破坏回应。'
+  };
   const hasTag = (row, tags) => row.tags.some(t => tags.includes(t));
+  const axisCopy = {
+    commitment: ['变化时倾向先协商，再调整约定。', '守约与调整会随条件取舍。', '需要说清期限、变更与交接。'],
+    transparency: ['倾向在决定前说明重要事实。', '披露时机与范围会随条件取舍。', '需要更及时地说清相关事实。'],
+    responsibility: ['倾向承担责任并跟进补救。', '承担方式会随资源与压力取舍。', '需要把分工与补救落实到行动。'],
+    boundaries: ['倾向保留拒绝权、隐私与自主。', '自主与共同需要会随情境取舍。', '需要明确拒绝、隐私与决定权。'],
+    fairness: ['倾向按知情规则分配资源。', '资源与成本分配会随情境取舍。', '需要核对授权、成本与分配规则。'],
+    care: ['倾向提供具体、持续的帮助。', '支持投入会随资源与处境取舍。', '需要更多实际照料与支持。'],
+    learning: ['倾向核对反馈并修正做法。', '调整与原有判断会随条件取舍。', '需要跟进反馈后的具体修正。'],
+    creation: ['倾向试新办法并推进下一步。', '尝试与熟悉安排会随条件取舍。', '更偏向熟悉安排，成果仍需观察。']
+  };
   function measure(summary, def) {
     const opportunities = M.items.filter(q => q.scope === summary.scope && q.phase === 'core' &&
       (!def.topicIds || def.topicIds.includes(q.topicId)) &&
@@ -135,35 +158,19 @@
       : value >= 70 ? def.high : value >= 40
         ? `${def.high} 但这种做法并非在各种情境中都同样突出，取舍会受到条件影响。` : def.low;
     if (risks.length && def.risk) description += ` ${def.risk}`;
+    const short = !covered ? '信息还不充分，暂不判断高低。'
+      : axisCopy[def.id][value >= 70 ? 0 : value >= 40 ? 1 : 2];
     return { id: def.id, name: def.name, value, heading, description, task: def.task,
+      short,
       supportCount: supports.length, observedCount: observed.length, opportunityCount: opportunities.length,
       riskCount: risks.length, historyCount: observed.filter(r => r.mode === 'history').length };
   }
-  function narrative(classification, summary, axes) {
-    if (!summary.rows.length) return { title: '尚无可解释证据', eyebrow: '当前画像', description: '目前没有可用于解释的有效信息。可以继续作答，再看各维度呈现的特点。', symbols: [] };
-    if (summary.scope === 'marriage') {
-      const risk = summary.indicators.some(i => i.status === 'boundary_safety_review');
-      return { title: risk ? '关系中的尊重与边界' : '你的婚恋相处画像', eyebrow: '婚恋 · 共同生活与长期投入',
-        description: '长期意愿、实际分担、共同财务与遇到困难时的选择，需要放在一起理解。下面呈现你的相处倾向、需要协调的条件，以及值得留意的边界。',
-        symbols: risk ? [] : [{ animal: '企鹅', symbol: 'penguin' }], symbolMeaning: '象征陪伴与共同投入' };
-    }
-    const selected = classification.primary ? [classification.primary] :
-      classification.status === 'mixed' ? (classification.candidates || []).slice(0, 2) : [];
-    if (selected.length) {
-      const a = types[selected[0].id], b = selected[1] && types[selected[1].id];
-      return { title: classification.primary ? a.title : b ? `${a.theme}与${b.theme}并重` : `${a.theme}倾向`,
-        eyebrow: classification.primary ? '个人 · 主要描述倾向' : '个人 · 并存的描述倾向',
-        description: b ? `你同时呈现${a.title.replace('型', '')}与${b.title.replace('型', '')}的特点。${a.description} ${b.description}`
-          : a.description,
-        tension: b ? `${a.tension} ${b.tension}` : a.tension,
-        symbols: selected.map(t => ({ animal: types[t.id].animal, symbol: types[t.id].symbol })),
-        symbolMeaning: b ? `象征${a.theme}与${b.theme}的并存` : `象征${a.theme}取向` };
-    }
-    const pronounced = axes.filter(a => a.value !== null && a.value >= 60).sort((a, b) => b.value - a.value).slice(0, 2);
-    return { title: '你的行为画像', eyebrow: '个人 · 按维度理解',
-      description: pronounced.length ? `目前较突出的做法集中在${pronounced.map(a => a.name).join('和')}。其他方面有不同的取舍，需要结合下方解析一起理解。`
-        : '你的做法随着情境与条件有所变化。目前用各维度的具体解析来理解，比给出一个单独标签更合适。',
-      symbols: [] };
+  function narrative(identity) {
+    return { title: identity.title, subtitle: identity.subtitle,
+      eyebrow: identity.scope === 'personal' ? '个人 · 性格画像' : '婚恋 · 相处画像',
+      description: identity.lead, symbols: identity.symbols,
+      tension: identity.scope === 'personal' ? identity.selected.slice(0, 2).map(t => types[t.id].tension).join(' ') : '',
+      symbolMeaning: '动物图案是取向的视觉象征' };
   }
   function risks(summary) {
     const rank = { boundary_safety_review: 0, repeated_answer_signal: 1, single_or_same_topic_signal: 2 };
@@ -171,6 +178,8 @@
       (rank[a.status] ?? 3) - (rank[b.status] ?? 3) || b.risk.length - a.risk.length).map(i => {
       const copy = riskCopy[i.name] || [i.name, '这一方面存在值得进一步观察的取舍。', '不同条件下的负责处理'];
       return { title: copy[0], description: copy[1], priority: i.status === 'boundary_safety_review',
+        repeated: i.status === 'repeated_answer_signal',
+        short: riskShort[i.name] || '这一方面需要进一步观察。',
         recurrence: i.status === 'repeated_answer_signal' ? i.historyRisk
           ? '这个倾向在不同情境中重复出现，并包含自述经历。'
           : '这个倾向在设想的不同情境中重复出现，现实表现仍需观察。'
@@ -197,10 +206,12 @@
   function present(report) {
     const summary = report.derived;
     const axes = (summary.scope === 'marriage' ? marriageAxes : baseAxes).map(d => measure(summary, d));
+    const identity = I.build(report, axes), cautions = risks(summary);
     return { version: PRESENTATION_VERSION, scope: summary.scope, axes,
-      narrative: narrative(report.classification, summary, axes), risks: risks(summary), preferences: preferences(summary),
+      identity, affinities: A.compare(identity, cautions),
+      narrative: narrative(identity), risks: cautions, preferences: preferences(summary),
       hasEvidence: summary.rows.length > 0, completeRadar: axes.every(a => a.value !== null),
-      radarNote: '雷达表示相关核心情境中采用这些做法的比例，越外侧越常采用；它不是能力分数、人格排名或忠诚概率。风险在解析中单独保留，灰色标记表示信息不足。' };
+      radarNote: '越外侧，越常采用该做法。比例来自相关核心题，灰点表示信息不足；不是能力或忠诚分数。' };
   }
   root.RCT_PROFILE = { present, types, PRESENTATION_VERSION };
   if (typeof module !== 'undefined') module.exports = root.RCT_PROFILE;

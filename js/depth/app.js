@@ -11,10 +11,8 @@
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const missingNames = { skipped: '未回答', no_experience: '没有相关经历／不适用', uncertain: '不确定', declined: '不愿回答' };
   const modeNames = { personal: '个人深度测评', marriage: '婚恋深度测评' };
-  const pairStates = { risk_review: '边界风险待核对', unknown: '资料不足',
-    difference: '可协商差异', confirmed_agreement: '明确一致' };
   const legacyKeys = ['rct_exploration_draft_v1', 'rct_exploration_reports_v1', 'rct_history_v1', 'rct_outcomes_v1'];
-  const state = { draft: null, report: null, reasons: {}, pair: null, raw: null, importRaw: null };
+  const state = { draft: null, report: null, reasons: {}, raw: null, importRaw: null };
   const domainTasks = [
     '结婚或长期相处的时间预期；变化怎样告知；分开时怎样交接。',
     '彼此接受的忠实约定；哪些接触要告知；哪些隐私保留。',
@@ -28,20 +26,6 @@
     '拒绝权、隐私和离开权；任何威胁或控制怎样停止。',
     '亲密需要与频率差异；如何表达拒绝并协商，不要求私密细节。',
     '居住、职业与长期目标；对方的投入怎样被告知和安排。'
-  ];
-  const domainPaths = [
-    '关系时间预期改变时，若双方及时告知并履行交接安排，可减少长期等待与突然中断；若继续作不真实保证，另一方可能基于错误预期投入。',
-    '重要交往边界改变时，若忠实约定明确且变化及时披露，可按约定重新确认；若相关接触被隐瞒，信任冲突可能扩大。',
-    '工作量或照料需求增加时，若双方持续核对任务并调整分工，可减少单方长期负担；若任务口头分配却无人跟进，负担可能集中到一人。',
-    '双方家人需要支持或介入决定时，若支持范围与共同决策权明确，可协调有限帮助；若一方代替两人承诺，可能发生家庭边界冲突。',
-    '收入、债务或共同支出变化时，若双方获得完整信息并分别同意，可共同调整预算；若资金信息被隐藏，另一方可能在不知情时承担损失。',
-    '大额消费、借贷或投资出现时，若预算与兜底责任得到知情确认，可及时限制共同风险；若未经同意要求对方承担损失，财务冲突可能扩大。',
-    '生育与育儿计划变化时，若双方尊重自愿、明确照料分工，可继续协商各自选择；若把不同意视为不负责任或施压，拒绝权可能受到损害。',
-    '争执重复出现时，若暂停后按约回谈并跟进修复，可减少问题积累；若用失联、羞辱或报复代替讨论，冲突可能加深。',
-    '失业或疾病持续时，若双方按备用预算、照料任务与资源上限调整，可维持有边界的互助；若突然失联或转嫁全部责任，另一方可能独自承受后果。',
-    '一方拒绝、需要隐私或希望离开时，若拒绝权得到尊重，可以重新协商安排；若用威胁、限制或依赖关系施压，应先核对安全和自主。',
-    '亲密需求存在差异时，若允许拒绝并表达各自需要，可协商双方接受的方式；若把亲密当作义务或交换条件，可能形成持续压力。',
-    '搬家、职业或长期目标变化时，若及时告知并确认对方投入，可调整计划与分工；若单方决定后要求对方兜底，可能增加机会成本与关系冲突。'
   ];
   function date(value) {
     const t = new Date(value);
@@ -162,18 +146,34 @@
     } catch (error) { notices('depth-quiz-status', error.message); }
   }
   function dimensions(profile) {
-    return `<section class="report-section"><h3>维度解析</h3><div class="profile-dimensions">${profile.axes.map(a =>
-      `<article class="profile-dimension" id="profile-axis-${esc(a.id)}" tabindex="-1">
-        <div class="dimension-heading"><h4>${esc(a.name)}</h4><span class="dimension-level${a.value === null ? ' unknown' : ''}">${esc(a.heading)}</span></div>
-        <p>${esc(a.description)}</p><p class="dimension-observe">${esc(a.task)}</p></article>`).join('')}</div></section>`;
+    return `<div class="profile-dimensions">${profile.axes.map(a =>
+      `<details class="profile-dimension" id="profile-axis-${esc(a.id)}">
+        <summary><span class="dimension-heading"><strong>${esc(a.name)}</strong><span class="dimension-level${a.value === null ? ' unknown' : ''}">${a.value === null ? '待观察' : a.value + '%'}</span></span>
+          <span class="dimension-track${a.value === null ? ' unknown' : ''}" aria-hidden="true"><span style="width:${a.value ?? 0}%"></span></span>
+        </summary><div class="dimension-detail"><h4>${esc(a.heading)}</h4><p>${esc(a.short)}</p>
+          <p class="dimension-observe">${esc(a.task)}</p></div></details>`).join('')}</div>`;
   }
   function attentions(profile) {
     if (!profile.hasEvidence) return '';
-    return `<section class="report-section profile-attentions"><h3>需要留意的部分</h3>${profile.risks.length
-      ? profile.risks.map(r => `<article class="profile-caution${r.priority ? ' priority' : ''}">
-        <h4>${esc(r.title)}${r.priority ? '<span>优先留意</span>' : ''}</h4><p>${esc(r.description)}</p>
-        <p class="muted">${esc(r.recurrence)}${r.counter ? ' ' + esc(r.counter) : ''}</p></article>`).join('')
-      : '<p class="muted">目前没有明显的风险倾向提示。真实相处中的履约、信息披露和压力下的行动，仍需要持续观察。</p>'}</section>`;
+    return `<section class="report-section profile-attentions"><div class="section-heading"><h3>需要留意</h3><span>${profile.risks.length ? profile.risks.length + ' 项提示' : '持续观察'}</span></div>${profile.risks.length
+      ? `<div class="profile-cautions">${profile.risks.map(r => `<details class="profile-caution${r.priority ? ' priority' : ''}">
+        <summary><span class="caution-heading"><strong>${esc(r.title)}</strong><span>${r.priority ? '优先留意' : r.repeated ? '重复出现' : '情境提示'}</span></span><span class="caution-short">${esc(r.short)}</span></summary>
+        <div class="caution-detail"><p>${esc(r.description)}</p><p class="muted">${esc(r.recurrence)}</p>
+          ${r.counter ? `<p class="muted">${esc(r.counter)}</p>` : ''}<p class="muted">${esc(r.limit)}</p></div></details>`).join('')}</div>`
+      : '<p class="muted">目前没有明显风险提示，长期表现仍需观察。</p>'}</section>`;
+  }
+  function affinities(profile) {
+    const a = profile.affinities;
+    if (!a.available) return `<section class="report-section profile-affinities"><h3>相处契合参考</h3><p class="muted">主要取向还不明确，先看各维度的解析。</p></section>`;
+    return `<section class="report-section profile-affinities"><div class="section-heading"><h3>相处契合参考</h3><span>从关注点理解差异</span></div>
+      ${a.riskFirst ? '<p class="affinity-risk-note">先核对上方重复或边界风险，再参考类型共同点。</p>' : ''}
+      <div class="affinity-tabs" role="tablist" aria-label="类型相处参考">${a.groups.map((g, i) =>
+        `<button type="button" role="tab" id="affinity-tab-${g.id}" aria-controls="affinity-panel-${g.id}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-affinity-tab="${g.id}">${esc(g.label)}<span>${g.entries.length}</span></button>`).join('')}</div>
+      ${a.groups.map((g, i) => `<div class="affinity-panel${i ? ' hidden' : ''}" role="tabpanel" id="affinity-panel-${g.id}" aria-labelledby="affinity-tab-${g.id}" tabindex="0">
+        <div class="affinity-list">${g.entries.map(t => `<details class="affinity-entry" data-affinity-type="${esc(t.id)}">
+          <summary><span class="affinity-symbol" aria-hidden="true">${V.animal(t.symbol, t.animal)}</span><span><strong>${esc(t.name)}型 <small>${esc(t.glyph)}</small></strong><span class="affinity-reason">${esc(t.reason)}</span></span><span class="affinity-expand" aria-hidden="true">+</span></summary>
+          <p class="affinity-discussion">可以先谈：${esc(t.discussion)}</p></details>`).join('') || '<p class="muted">当前没有明确落入这一组的类型。</p>'}</div></div>`).join('')}
+      <p class="affinity-note">${esc(a.note)}</p></section>`;
   }
   function domainDescription(topic) {
     if (!topic.covered) return '这一领域的信息还不充分，目前不判断相处方式是否一致或稳定。';
@@ -187,10 +187,9 @@
     ].filter(Boolean).join(' ');
   }
   function marriageDomains(summary) {
-    return `<section class="report-section"><h3>共同生活中的取舍</h3><div class="profile-domains">${summary.topics.map(t =>
+    return `<details class="profile-more profile-domains"><summary>共同生活 · 12 个领域</summary><div>${summary.topics.map(t =>
       `<details class="topic-row"><summary><strong>${esc(t.name)}</strong></summary>
-        <p>${esc(domainDescription(t))}</p><p class="muted">${esc(domainTasks[t.id - 1])}</p></details>`).join('')}</div>
-      <button type="button" class="btn btn-ghost" id="report-open-pair">与另一份婚恋画像对照</button></section>`;
+        <p>${esc(domainDescription(t))}</p><p class="muted">${esc(domainTasks[t.id - 1])}</p></details>`).join('')}</div></details>`;
   }
   function reportView(rawReport) {
     try { state.report = D.interpret(rawReport); } catch (error) {
@@ -198,23 +197,29 @@
     }
     const report = state.report, summary = report.derived, profile = P.present(report), n = profile.narrative;
     $('report-mode').textContent = modeNames[report.scope];
+    const highlights = profile.identity.selected.length ? profile.identity.selected :
+      profile.axes.filter(a => a.value !== null).sort((a, b) => b.value - a.value).slice(0, 3);
     $('depth-report').innerHTML = `<header class="profile-hero">
+      <div class="profile-intro"><p class="profile-eyebrow">${esc(n.eyebrow)}</p><h2>${esc(n.title)}</h2>
+        <p class="profile-subtitle">${esc(n.subtitle)}</p></div>
       <figure class="profile-emblem${n.symbols.length > 1 ? ' paired' : ''}">
         <div class="profile-symbols">${n.symbols.length ? n.symbols.map(s => V.animal(s.symbol, s.animal)).join('') : V.pattern()}</div>
-        <figcaption>${esc(n.symbols.map(s => s.animal).join(' · ') || '行为画像')}</figcaption>
-      </figure><div class="profile-intro"><p class="profile-eyebrow">${esc(n.eyebrow)}</p><h2>${esc(n.title)}</h2>
-        <p class="profile-summary">${esc(n.description)}</p>
-        ${n.symbolMeaning ? `<p class="profile-symbol-meaning">${esc(n.symbolMeaning)} · 图案不代表人格优劣</p>` : ''}</div></header>
-      ${n.tension ? `<p class="profile-tension">${esc(n.tension)}</p>` : ''}
-      <section class="report-section profile-radar-section"><h3>你的行为轮廓</h3>
-        <figure class="profile-chart">${V.radar(profile.axes)}<figcaption>${esc(profile.radarNote)}</figcaption></figure>
-        <p class="radar-instruction muted">点击图中维度名称，查看对应解析。</p></section>
-      ${attentions(profile)}${dimensions(profile)}
-      ${profile.preferences.length ? `<section class="report-section"><h3>价值与做事方式</h3>
+        <figcaption>${esc(n.symbols.map(s => s.animal).join(' · ') || '星图象征')}</figcaption>
+      </figure><p class="profile-summary">${esc(n.description)}</p>
+      ${highlights.length ? `<div class="profile-highlights">${highlights.map(t =>
+        `<div class="profile-highlight"><span>${esc(t.glyph || '·')}</span><div><strong>${esc(t.name)}</strong><p>${t.value}% <small>采用比例</small></p></div></div>`).join('')}</div>` : ''}
+      ${highlights.length ? '<p class="profile-ratio-note">相关题中体现该取向的比例；取向可重叠，不相加为 100%。</p>' : ''}
+      </header>
+      <section class="report-section profile-radar-section"><div class="section-heading"><h3>维度解析</h3><span>点击维度，展开解析</span></div>
+        <div class="profile-outline"><figure class="profile-chart">${V.radar(profile.axes)}<figcaption>${esc(profile.radarNote)}</figcaption></figure>
+          ${dimensions(profile)}</div></section>
+      ${attentions(profile)}${affinities(profile)}
+      ${n.tension || profile.preferences.length ? `<details class="profile-more"><summary>价值取舍与行动建议</summary>
+        ${n.tension ? `<p class="profile-tension">${esc(n.tension)}</p>` : ''}
         <div class="profile-preferences">${profile.preferences.map(p => `<article><h4>${esc(p.name)}</h4>
-          <p>${esc(p.description)}</p><p class="muted">${esc(p.note)}</p></article>`).join('')}</div></section>` : ''}
+          <p>${esc(p.description)}</p><p class="muted">${esc(p.note)}</p></article>`).join('')}</div></details>` : ''}
       ${report.scope === 'marriage' ? marriageDomains(summary) : ''}
-      <p class="profile-footnote">画像反映当前自述与情境取舍。长期可靠、忠诚、能力与关系走向，还需结合实际表现理解。</p>`;
+      <p class="profile-footnote">画像来自当前自述，类型与动物仅帮助理解；真实相处仍需看长期行动。</p>`;
     const queue = E.followups(report.scope, report.answers, false);
     const expanded = E.followups(report.scope, report.answers, true);
     $('report-followup').disabled = !expanded.length;
@@ -222,15 +227,34 @@
     $('depth-report').querySelectorAll('[data-focus-axis]').forEach(label => {
       const focus = () => {
         const target = $('profile-axis-' + label.dataset.focusAxis);
+        target.open = true;
         target.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-        target.focus({ preventScroll: true });
+        target.querySelector('summary').focus({ preventScroll: true });
       };
       label.onclick = focus;
       label.onkeydown = event => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focus(); }
       };
     });
-    if ($('report-open-pair')) $('report-open-pair').onclick = pairHub;
+    const tabs = [...$('depth-report').querySelectorAll('[data-affinity-tab]')];
+    function activate(tab) {
+      tabs.forEach(t => {
+        const selected = t === tab;
+        t.setAttribute('aria-selected', selected); t.tabIndex = selected ? 0 : -1;
+        $('affinity-panel-' + t.dataset.affinityTab).classList.toggle('hidden', !selected);
+      });
+    }
+    tabs.forEach((tab, i) => {
+      tab.onclick = () => activate(tab);
+      tab.onkeydown = event => {
+        let next;
+        if (event.key === 'ArrowRight') next = (i + 1) % tabs.length;
+        if (event.key === 'ArrowLeft') next = (i + tabs.length - 1) % tabs.length;
+        if (event.key === 'Home') next = 0;
+        if (event.key === 'End') next = tabs.length - 1;
+        if (next !== undefined) { event.preventDefault(); activate(tabs[next]); tabs[next].focus(); }
+      };
+    });
     notices('report-status');
     show('depth-report');
   }
@@ -261,7 +285,7 @@
     state.draft = draft; storage.saveDraft(draft); renderQuestion(); show('depth-quiz'); $('depth-text').focus({ preventScroll: true });
   }
   function history() {
-    const reports = storage.list('reports') || [], imports = storage.list('imports') || [], pairs = storage.list('comparisons') || [];
+    const reports = storage.list('reports') || [], imports = storage.list('imports') || [];
     const legacy = readLegacy();
     $('depth-history').innerHTML = `
       <section class="report-section"><h3>当前版本报告 · ${reports.length} 份</h3>${reports.length ? [...reports].reverse().map((r, index) =>
@@ -272,9 +296,6 @@
         return draft ? `<div class="history-item"><div><strong>${modeNames[scope]}</strong><p>已处理 ${Object.keys(draft.answers).length} / ${draft.order.length} 题</p></div>
           <button type="button" class="btn btn-ghost" data-resume="${scope}">继续</button></div>` : '';
       }).join('') || '<p class="muted">尚无可读取的草稿。</p>'}</section>
-      <section class="report-section"><h3>已保存的双方对照 · ${pairs.length} 份</h3>${pairs.map((p, index) =>
-        `<div class="history-item"><div><strong>双方对照快照</strong><p>${esc(date(p.createdAt))}</p></div>
-          <button type="button" class="btn btn-ghost" data-pair-history="${index}">查看原快照</button></div>`).join('')}</section>
       <section class="report-section"><h3>旧版与不兼容记录 · ${legacy.length + imports.length} 份</h3>
         ${legacy.map((r, i) => `<div class="history-item"><div><strong>${esc(r.title)}</strong><p>${esc(r.record?.version || r.record?.assessmentVersion || '原版本')}</p></div>
           <button type="button" class="btn btn-ghost" data-legacy="${i}">按原文查看</button></div>`).join('')}
@@ -286,9 +307,6 @@
     $('depth-history').querySelectorAll('[data-legacy]').forEach(b => b.onclick = () => rawView(legacy[Number(b.dataset.legacy)]));
     $('depth-history').querySelectorAll('[data-import-raw]').forEach(b => b.onclick = () => {
       const r = imports[Number(b.dataset.importRaw)]; rawView({ title: '不兼容的导入报告', record: r.original, raw: JSON.stringify(r.original, null, 2) });
-    });
-    $('depth-history').querySelectorAll('[data-pair-history]').forEach(b => b.onclick = () => {
-      const r = pairs[Number(b.dataset.pairHistory)]; rawView({ title: '双方对照快照 · 原确认状态', record: r, raw: JSON.stringify(r, null, 2) });
     });
     notices('import-status'); show('depth-history');
   }
@@ -304,8 +322,7 @@
     $('raw-readable').innerHTML = `<div class="raw-summary">${texts.map(t => `<p>${esc(t)}</p>`).join('')}
       ${answers.length ? `<details class="report-evidence"><summary>原题目与回答 · ${answers.length} 项</summary>${answers.map(a =>
         `<p><span class="muted">${esc(a.id)}</span> ${esc(a.text)}<br>原选择：${esc(a.answer || '尚未回答')}</p>`).join('')}</details>` : ''}
-      ${r.format === 'rct-depth-comparison' ? `<p>保存时的领域状态：</p>${(Array.isArray(r.derived?.domains) ? r.derived.domains : []).map(d =>
-        `<p>${esc(d.name)}：${esc(pairStates[d.status])}；约定：${esc(d.agreement?.statement || '尚未双方确认')}</p>`).join('')}` : ''}</div>`;
+      </div>`;
     show('depth-raw');
   }
   async function importReport(file) {
@@ -318,7 +335,7 @@
         const r = { reportId: D.uid(), original, createdAt: new Date().toISOString() };
         state.importRaw = r;
         storage.append('imports', r); history();
-        notices('import-status', '版本不兼容：已保留原文，不参与新算法和双方对照。'); return;
+        notices('import-status', '版本不兼容：已保留原文，不参与新算法计算。'); return;
       }
       const interpreted = D.interpret(original);
       const list = storage.list('reports');
@@ -345,102 +362,14 @@
     download({ format: 'rct-local-backup', version: M.version, exportedAt: new Date().toISOString(),
       rawRecords: raw, memory: { draft: state.draft, currentReport: state.report,
         reports: storage.list('reports'), imports: storage.list('imports'), comparisons: storage.list('comparisons'),
-        currentComparison: state.pair, pendingImport: state.importRaw } }, 'RCT-全部本地记录.json');
-  }
-  function pairReports() {
-    return (storage.list('reports') || []).filter(r => r.scope === 'marriage').flatMap(r => {
-      try { return [D.interpret(r)]; } catch { return []; }
-    });
-  }
-  function pairHub() {
-    state.pair = null; $('pair-content').replaceChildren(); $('pair-actions').classList.add('hidden');
-    const reports = pairReports();
-    ['pair-a', 'pair-b'].forEach(id => $(id).innerHTML = '<option value="">请选择实际报告</option>' +
-      reports.map((r, index) => `<option value="${esc(r.reportId)}">报告 ${index + 1} · ${esc(date(r.createdAt))} · ${Object.keys(r.answers).length} 题</option>`).join(''));
-    if (state.report?.scope === 'marriage') $('pair-a').value = state.report.reportId;
-    notices('pair-status', reports.length < 2 ? '资料不足：需要两份同版本婚恋报告。可先导入另一人主动提供的报告。' : '选择两份不同报告，A、B 的身份由提供者核对。');
-    show('depth-pair');
-  }
-  function loadPair() {
-    const reports = pairReports(), a = reports.find(r => r.reportId === $('pair-a').value), b = reports.find(r => r.reportId === $('pair-b').value);
-    if (!a || !b || a.reportId === b.reportId) { notices('pair-status', '请选择两份不同的实际婚恋报告，不能用同一份报告充当双方。'); return; }
-    state.pair = { a, b, agreements: M.marriageDomains.map(d => ({ domainId: d.id, statement: '',
-      partyAResponse: 'pending', partyBResponse: 'pending', status: 'single_party_statement' })) };
-    renderPair(); $('pair-actions').classList.remove('hidden');
-    notices('pair-status', '两份报告已读取。约定由本人分别记录回应；当前没有远程身份核验，不能证明另一方真实同意。');
-  }
-  function pairDerived() {
-    return E.compare(state.pair.a.derived, state.pair.b.derived, state.pair.agreements);
-  }
-  function renderPair() {
-    const result = pairDerived(), rank = { risk_review: 0, unknown: 1, difference: 2, confirmed_agreement: 3 };
-    $('pair-content').innerHTML = [...result.domains].sort((a, b) => rank[a.status] - rank[b.status]).map(d => {
-      const p = state.pair, a = p.a.derived.topics.find(t => t.id === d.id), b = p.b.derived.topics.find(t => t.id === d.id);
-      const agreement = p.agreements.find(g => g.domainId === d.id);
-      const responseOptions = '<option value="pending">尚未由本人记录回应</option><option value="accept">本人接受此约定</option><option value="reject">本人不接受／需调整</option>';
-      return `<article class="pair-domain" data-pair-domain="${d.id}"><h3>${String(d.id).padStart(2, '0')} ${esc(d.name)}</h3>
-        <div class="pair-profiles"><div><h4>A 的相处倾向</h4><p>${esc(domainDescription(a))}</p></div>
-          <div><h4>B 的相处倾向</h4><p>${esc(domainDescription(b))}</p></div></div>
-        <p>共同议题：${esc(domainTasks[d.id - 1])}</p>
-        <label class="oc-field"><span>写下双方需要确认的具体约定</span><textarea rows="3" maxlength="2000" data-agreement="${d.id}" placeholder="说明做什么、由谁做、变化时怎样告知">${esc(agreement.statement)}</textarea></label>
-        <div class="pair-confirm">
-          <label class="oc-field"><span>A 本人对当前这条约定的回应</span><select data-confirm-a="${d.id}">${responseOptions}</select></label>
-          <label class="oc-field"><span>B 本人对当前这条约定的回应</span><select data-confirm-b="${d.id}">${responseOptions}</select></label>
-        </div>
-        <div class="pair-result" id="pair-result-${d.id}"></div></article>`;
-    }).join('');
-    $('pair-content').querySelectorAll('[data-agreement]').forEach(input => input.oninput = () => {
-      const id = Number(input.dataset.agreement), g = state.pair.agreements.find(a => a.domainId === id);
-      g.statement = input.value;
-      // Editing the wording creates a new proposal; old confirmations never transfer.
-      g.partyAResponse = 'pending'; g.partyBResponse = 'pending';
-      delete g.partyAAt; delete g.partyBAt;
-      document.querySelector(`[data-confirm-a="${id}"]`).value = 'pending';
-      document.querySelector(`[data-confirm-b="${id}"]`).value = 'pending';
-      updatePair();
-    });
-    ['a', 'b'].forEach(party => $('pair-content').querySelectorAll(`[data-confirm-${party}]`).forEach(select => {
-      select.onchange = () => {
-        const g = state.pair.agreements.find(a => a.domainId === Number(select.dataset[party === 'a' ? 'confirmA' : 'confirmB']));
-        g[party === 'a' ? 'partyAResponse' : 'partyBResponse'] = select.value;
-        g[party === 'a' ? 'partyAAt' : 'partyBAt'] = new Date().toISOString();
-        updatePair();
-      };
-    }));
-    updatePair();
-  }
-  function updatePair() {
-    const result = pairDerived();
-    result.domains.forEach(d => {
-      const g = state.pair.agreements.find(a => a.domainId === d.id);
-      const both = g.statement.trim() && [g.partyAResponse, g.partyBResponse].every(r => ['accept', 'reject'].includes(r));
-      g.status = both ? 'both_responses_recorded' : 'single_party_statement';
-      const condition = d.status === 'risk_review'
-        ? '若隐瞒、强迫或违约的倾向在现实中出现，共同决策或安全可能受损。应先观察拒绝权、资源权限及实际后果；其他长处不抵消这些风险。'
-        : d.status === 'unknown'
-          ? '缺少有效核心回答或双方回应时，不能判断一致，也无法推断关系走向。先补足经历与具体约定。'
-          : d.status === 'difference'
-            ? '若一方不接受当前约定，执行中可能反复产生分工或边界争议。先重新商量并各自确认；差异本身不证明不适合。'
-            : '若双方确实接受并持续履行这条约定，条件变化时可按约定调整；当前一致只指这一条约定，未证明实际执行或未来婚姻成功。';
-      $(`pair-result-${d.id}`).innerHTML = `<span class="pair-state ${d.status}">${pairStates[d.status]}</span>
-        <p>约定状态：${both ? '双方分别录入了回应' : '单方陈述／尚未双方确认'}。A：${esc({ pending: '未确认', accept: '接受', reject: '不接受／需调整' }[g.partyAResponse])}；B：${esc({ pending: '未确认', accept: '接受', reject: '不接受／需调整' }[g.partyBResponse])}。</p>
-        <p>${esc(condition)}</p><p>本领域可核对的条件路径：${esc(domainPaths[d.id - 1])} 这些路径尚未验证，不是本次关系结局预测。</p>`;
-    });
-  }
-  function pairSnapshot() {
-    if (!state.pair) return null;
-    const p = state.pair;
-    return { format: 'rct-depth-comparison', comparisonId: D.uid(), version: M.version, engineVersion: D.ENGINE_VERSION,
-      createdAt: new Date().toISOString(), reportAId: p.a.reportId, reportBId: p.b.reportId,
-      reports: { a: D.copy(p.a), b: D.copy(p.b) }, agreements: D.copy(p.agreements), derived: pairDerived(),
-      confirmationSource: 'separate_local_self_recording_unverified' };
+        pendingImport: state.importRaw } }, 'RCT-全部本地记录.json');
   }
   function init() {
     $('type-library').innerHTML = `<div class="type-library-list">${M.prototypes.map(t =>
-      `<article><span>${esc(t.id)}</span>${esc(t.name)}</article>`).join('')}</div>`;
+      `<article><span class="library-glyph">${esc(window.RCT_IDENTITY.personal[t.id].glyph)}</span><div><strong>${esc(window.RCT_IDENTITY.personal[t.id].name)}型</strong><p>${esc(window.RCT_IDENTITY.personal[t.id].focus)}</p></div></article>`).join('')}</div>`;
     document.querySelectorAll('[data-start]').forEach(b => b.onclick = () => start(b.dataset.start));
     document.querySelectorAll('[data-home]').forEach(b => b.onclick = home);
-    $('btn-history').onclick = history; $('btn-pair').onclick = pairHub;
+    $('btn-history').onclick = history;
     $('depth-prev').onclick = () => move(-1); $('depth-next').onclick = () => move(1);
     $('depth-skip').onclick = () => select('skipped');
     $('depth-pause').onclick = () => { storage.saveDraft(state.draft); home(); };
@@ -453,23 +382,10 @@
     $('history-retry').onclick = () => { storage.retry(); history(); };
     $('raw-back').onclick = history;
     $('raw-export').onclick = () => download(state.raw.raw || state.raw.record, 'RCT-原版本记录.json');
-    $('pair-import').onclick = history; $('pair-load').onclick = loadPair;
-    ['pair-a', 'pair-b'].forEach(id => $(id).onchange = () => {
-      state.pair = null; $('pair-content').replaceChildren(); $('pair-actions').classList.add('hidden');
-      notices('pair-status', '报告选择已变化，请重新读取；旧约定未迁移到新的两份报告。');
-    });
-    $('pair-save').onclick = () => {
-      const snapshot = pairSnapshot(); if (!snapshot) return;
-      storage.append('comparisons', snapshot);
-      notices('pair-status', '已生成本次对照快照。后续修订另存，原确认状态保留。');
-    };
-    $('pair-export').onclick = () => {
-      const snapshot = pairSnapshot(); if (snapshot) download(snapshot, 'RCT-双方婚恋对照.json');
-    };
     ['personal', 'marriage'].forEach(scope => storage.draft(scope));
     storage.list('reports'); home();
   }
   // Expose observed state for automated regression; ordinary UI never displays score tags while answering.
-  window.RCT_DEPTH = { state, storage, start, reportView, pairHub, exportAll, importReport };
+  window.RCT_DEPTH = { state, storage, start, reportView, exportAll, importReport };
   document.addEventListener('DOMContentLoaded', init);
 })();
