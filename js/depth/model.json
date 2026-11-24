@@ -2,6 +2,9 @@
   "version": "rct-human-depth-draft-2026-11-24",
   "status": "design_unvalidated",
   "language": "zh-CN",
+  "missingReasons": [
+    "skipped"
+  ],
   "instruction": "情境题选最接近你通常会做的行动；经历题回想最近12个月内最近一次符合条件的事。经历超出12个月可另作备注，不并入当前计数。选择不代表行为已核实。没有经历、不确定或不愿回答可跳过，不计为低分。",
   "tags": {
     "H": {

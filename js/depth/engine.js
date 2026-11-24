@@ -11,7 +11,8 @@
     Object.entries(answers).forEach(([id, selection]) => {
       const item = lookup.get(id);
       if (!item || item.scope !== scope) { errors.push({ id, reason: '题目或模式不符' }); return; }
-      if (typeof selection === 'string' && item.missingOptions.includes(selection)) {
+      if (typeof selection === 'string' &&
+          (item.missingOptions.includes(selection) || model.missingReasons?.includes(selection))) {
         missing.push({ questionId: id, reason: selection }); return;
       }
       const option = item.options.find(o => o.id === selection);

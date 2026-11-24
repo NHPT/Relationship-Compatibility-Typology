@@ -1,23 +1,17 @@
 .mode-kicker { color: var(--green-strong); font-size: 11px; letter-spacing: .4px; margin-bottom: 8px; }
 .depth-title { font-size: 25px; line-height: 1.4; margin: 24px 0 16px; }
 .depth-library { margin: 24px 0; border-top: 1px solid var(--line); padding-top: 12px; }
-.depth-library > summary, .depth-note > summary { min-height: 44px; padding: 10px 0; cursor: pointer; font-size: 14px; }
+.depth-library > summary { min-height: 44px; padding: 10px 0; cursor: pointer; font-size: 14px; }
 .depth-library p { font-size: 13px; margin-top: 12px; }
 .type-library-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin: 8px 0 18px; }
 .type-library-list article { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .type-library-list span { color: var(--muted); margin-right: 8px; font-size: 11px; }
-.consent-fields { display: grid; gap: 16px; margin: 28px 0; }
-.consent-fields label { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
-.consent-fields input { width: 20px; height: 20px; margin-top: 4px; accent-color: var(--green); flex-shrink: 0; }
-.missing-options { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
-.missing-options button { min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; background: transparent; font-size: 12px; color: var(--muted); cursor: pointer; }
-.missing-options button.selected { background: var(--green-soft); color: var(--green-strong); border-color: var(--green); }
+#depth-skip.selected { background: var(--green-soft); color: var(--green-strong); border-color: var(--green); }
+#page-depth-quiz .quiz-actions .btn { min-width: 0; padding-inline: 14px; }
 #depth-kind { font-size: 12px; color: var(--green-strong); }
 #depth-progress { font-size: 12px; }
 #depth-followup-reason { font-size: 12px; margin: -12px 0 18px; }
 #depth-followup-reason:empty { display: none; }
-.depth-note { margin-top: 18px; }
-.depth-note .oc-field { margin: 10px 0; }
 textarea { width: 100%; padding: 10px 12px; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; font: inherit; color: var(--ink); resize: vertical; }
 textarea:focus-visible { outline: 3px solid #466da6; outline-offset: 3px; }
 .report-intro { padding: 24px 0; border-bottom: 1px solid var(--line); }

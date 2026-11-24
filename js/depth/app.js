@@ -8,7 +8,7 @@
   const $ = id => document.getElementById(id);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const missingNames = { no_experience: '没有相关经历／不适用', uncertain: '不确定', declined: '不愿回答' };
+  const missingNames = { skipped: '未回答', no_experience: '没有相关经历／不适用', uncertain: '不确定', declined: '不愿回答' };
   const modeNames = { personal: '个人深度测评', marriage: '婚恋深度测评' };
   const typeStates = { incomplete: '观察不足', mixed: '混合模式', unclassified: '未归类', invalid_input: '输入无效' };
   const riskStates = { boundary_safety_review: '边界或安全行动待核对',
@@ -17,7 +17,7 @@
   const pairStates = { risk_review: '边界风险待核对', unknown: '资料不足',
     difference: '可协商差异', confirmed_agreement: '明确一致' };
   const legacyKeys = ['rct_exploration_draft_v1', 'rct_exploration_reports_v1', 'rct_history_v1', 'rct_outcomes_v1'];
-  const state = { draft: null, report: null, pendingMarriage: null, reasons: {}, pair: null, raw: null, importRaw: null };
+  const state = { draft: null, report: null, reasons: {}, pair: null, raw: null, importRaw: null };
   const consequences = {
     '信息透明': ['相关方可能基于不完整或错误信息作决定。', '核对利益变化、债务与承诺变化时，实际告知了谁、何时告知。'],
     '承诺履行': ['合作方或伴侣可能突然承担中断、等待和交接成本。', '核对一次真实履约、变更告知与退出善后记录。'],
@@ -110,11 +110,6 @@
       history(); return;
     }
     draft ||= D.newDraft(scope);
-    if (scope === 'marriage') {
-      state.pendingMarriage = draft;
-      $('consent-adult').checked = false; $('consent-voluntary').checked = false;
-      $('consent-start').disabled = true; show('consent'); return;
-    }
     enter(draft, fresh);
   }
   function enter(draft, fresh = false) {
@@ -141,39 +136,26 @@
     const selection = draft.answers[q.id];
     $('depth-options').innerHTML = q.options.map(o => `<button type="button" class="option${selection === o.id ? ' selected' : ''}" data-option-id="${esc(o.id)}" aria-pressed="${selection === o.id}">
       <span class="option-label">${esc(o.text)}</span><span class="choice-marker" aria-hidden="true">${selection === o.id ? '✓' : ''}</span></button>`).join('');
-    $('depth-missing').innerHTML = q.missingOptions.map(reason =>
-      `<button type="button" data-missing="${reason}" class="${selection === reason ? 'selected' : ''}" aria-pressed="${selection === reason}">${missingNames[reason]}</button>`).join('');
     $('depth-options').querySelectorAll('button').forEach(b => b.onclick = () => select(b.dataset.optionId));
-    $('depth-missing').querySelectorAll('button').forEach(b => b.onclick = () => select(b.dataset.missing));
+    const skipped = Object.hasOwn(missingNames, selection);
+    $('depth-skip').classList.toggle('selected', skipped);
+    $('depth-skip').setAttribute('aria-pressed', String(skipped));
     $('depth-prev').disabled = draft.cursor === 0;
     $('depth-next').disabled = selection === undefined;
     $('depth-next').textContent = draft.cursor === draft.order.length - 1 ? '查看报告' : '下一题';
     $('depth-stop-followup').classList.toggle('hidden', draft.stage === 'core');
-    const note = draft.notes[q.id] || {};
-    $('note-date').value = note.eventDate || '';
-    $('note-context').value = note.context || '';
-    $('note-example').value = note.example || '';
-    $('note-date').closest('details').open = false;
     notices('depth-quiz-status', selection === undefined ? '选择后立即保存；点击下一题继续。' : '已记录本题选择，可修改或继续。');
   }
   function select(selection) {
     const draft = state.draft, id = draft.order[draft.cursor];
     D.choose(draft, id, selection); storage.saveDraft(draft);
-    document.querySelectorAll('#depth-options button, #depth-missing button').forEach(b => {
-      const chosen = (b.dataset.optionId || b.dataset.missing) === selection;
+    document.querySelectorAll('#depth-options button, #depth-skip').forEach(b => {
+      const chosen = b.id === 'depth-skip' ? Object.hasOwn(missingNames, selection) : b.dataset.optionId === selection;
       b.classList.toggle('selected', chosen); b.setAttribute('aria-pressed', String(chosen));
       const marker = b.querySelector('.choice-marker'); if (marker) marker.textContent = chosen ? '✓' : '';
     });
     $('depth-next').disabled = false;
     notices('depth-quiz-status', '已记录本题选择，可修改或继续。');
-  }
-  function saveNote() {
-    if (!state.draft) return;
-    const draft = state.draft, id = draft.order[draft.cursor];
-    draft.notes[id] = { voluntary: true, eventDate: $('note-date').value,
-      context: $('note-context').value, example: $('note-example').value };
-    draft.updatedAt = new Date().toISOString();
-    storage.saveDraft(draft); notices('depth-quiz-status', '已记录自愿补充内容，不提高证据权重。');
   }
   function move(delta) {
     const draft = state.draft;
@@ -188,7 +170,7 @@
       const report = D.snapshot(state.draft);
       const existing = (storage.list('reports') || []).find(r => r.version === report.version && r.scope === report.scope &&
         JSON.stringify(r.answers) === JSON.stringify(report.answers) && JSON.stringify(r.order) === JSON.stringify(report.order) &&
-        JSON.stringify(r.notes) === JSON.stringify(report.notes));
+        JSON.stringify(r.notes || {}) === JSON.stringify(report.notes || {}));
       if (existing) return reportView(existing);
       storage.append('reports', report); reportView(report);
     } catch (error) { notices('depth-quiz-status', error.message); }
@@ -196,13 +178,11 @@
   function evidence(rows, label, editable = true) {
     if (!rows.length) return '<p class="muted">尚无相关有效回答；不能当作中性或良好表现。</p>';
     return `<details class="report-evidence"><summary>${esc(label)} · ${rows.length} 题</summary>${rows.map(row => {
-      const note = state.report?.notes?.[row.questionId];
       const tags = row.matchingTags || row.tags;
       return `<article class="evidence-row" data-evidence-id="${esc(row.questionId)}">
         <p class="source">${esc(row.questionId)} · ${row.mode === 'history' ? '本人回忆 · 未核实' : '情境意向 · 未发生也可能改变'} · ${row.phase === 'core' ? '核心' : '补问'}</p>
         <p>${esc(row.text)}</p><p class="chosen">所选行动：${esc(row.answer)}</p>
         <p class="labels">${tags.map(t => `<span class="${M.tags[t].kind === 'risk' ? 'risk-text' : M.tags[t].kind === 'protect' ? 'protect-text' : ''}">${esc(M.tags[t].name)}</span>`).join('；')}</p>
-        ${note?.example || note?.context || note?.eventDate ? `<p class="source">自愿注记 · 未核实 · ${esc(note.eventDate)} ${esc(note.context)} ${esc(note.example)}</p>` : ''}
         ${editable ? `<button type="button" class="question-edit" data-edit-question="${esc(row.questionId)}">回看与修改这道题</button>` : ''}
       </article>`;
     }).join('')}</details>`;
@@ -326,7 +306,8 @@
   function reportDraft() {
     const r = state.report;
     return { ...D.newDraft(r.scope), answers: D.copy(r.answers), order: D.copy(r.order),
-      notes: D.copy(r.notes), consent: D.copy(r.consent), cursor: 0,
+      ...(r.notes !== undefined ? { notes: D.copy(r.notes) } : {}),
+      ...(r.consent !== undefined ? { consent: D.copy(r.consent) } : {}), cursor: 0,
       stage: r.order.length > D.coreCount(r.scope) ? 'automatic' : 'core' };
   }
   function edit(id) {
@@ -402,7 +383,7 @@
       if (file.size > 8 * 1024 * 1024) throw new Error('文件超过 8 MB，请只导入单份报告');
       const text = await file.text(), original = JSON.parse(text);
       if (!original || typeof original !== 'object' || Array.isArray(original)) throw new Error('需要单份 JSON 报告对象');
-      if (original.format !== 'rct-depth-report' || original.version !== M.version || original.engineVersion !== D.ENGINE_VERSION) {
+      if (original.format !== 'rct-depth-report' || original.version !== M.version || !D.compatibleEngine(original.engineVersion)) {
         const r = { reportId: D.uid(), original, createdAt: new Date().toISOString() };
         state.importRaw = r;
         storage.append('imports', r); history();
@@ -530,18 +511,10 @@
     document.querySelectorAll('[data-start]').forEach(b => b.onclick = () => start(b.dataset.start));
     document.querySelectorAll('[data-home]').forEach(b => b.onclick = home);
     $('btn-history').onclick = history; $('btn-pair').onclick = pairHub;
-    ['consent-adult', 'consent-voluntary'].forEach(id => $(id).onchange = () =>
-      $('consent-start').disabled = !$('consent-adult').checked || !$('consent-voluntary').checked);
-    $('consent-start').onclick = () => {
-      if (!$('consent-adult').checked || !$('consent-voluntary').checked) return;
-      const draft = state.pendingMarriage;
-      draft.consent = { adult: true, voluntary: true, recordedAt: new Date().toISOString() };
-      enter(draft);
-    };
     $('depth-prev').onclick = () => move(-1); $('depth-next').onclick = () => move(1);
+    $('depth-skip').onclick = () => select('skipped');
     $('depth-pause').onclick = () => { storage.saveDraft(state.draft); home(); };
     $('depth-stop-followup').onclick = finish;
-    ['note-date', 'note-context', 'note-example'].forEach(id => $(id).oninput = saveNote);
     $('report-followup').onclick = supplement; $('report-edit').onclick = () => edit();
     $('report-new').onclick = () => start(state.report.scope, true);
     $('report-export').onclick = () => download(state.report, `RCT-${modeNames[state.report.scope]}-${state.report.reportId}.json`);

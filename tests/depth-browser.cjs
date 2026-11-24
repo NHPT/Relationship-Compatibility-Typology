@@ -19,18 +19,17 @@ async function complete(page, choices = {}) {
   while (await page.locator('#page-depth-quiz').evaluate(e => e.classList.contains('active'))) {
     const id = await page.locator('#depth-text').getAttribute('data-question-id');
     const chosen = choices[id] || M.items.find(q => q.id === id).options[0].id;
-    if (['no_experience', 'uncertain', 'declined'].includes(chosen)) await page.locator(`[data-missing="${chosen}"]`).click();
+    if (['skipped', 'no_experience', 'uncertain', 'declined'].includes(chosen)) await page.locator('#depth-skip').click();
     else await page.locator(`#depth-options [data-option-id="${chosen}"]`).click();
     await page.locator('#depth-next').click();
   }
   assert.equal(await page.locator('#page-depth-report').evaluate(e => e.classList.contains('active')), true);
   return page.evaluate(() => RCT_DEPTH.state.report);
 }
-async function consent(page) {
-  assert.equal(await page.locator('#consent-start').isEnabled(), false);
-  await page.locator('#consent-adult').check();
-  assert.equal(await page.locator('#consent-start').isEnabled(), false);
-  await page.locator('#consent-voluntary').check(); await page.locator('#consent-start').click();
+async function directMarriage(page) {
+  assert.equal(await page.locator('#page-depth-quiz').evaluate(e => e.classList.contains('active')), true);
+  assert.equal(await page.locator('#page-consent, #consent-start, #consent-adult').count(), 0);
+  assert.equal(await page.locator('#depth-progress').textContent(), '第 1 / 48 题');
 }
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -59,19 +58,20 @@ async function consent(page) {
     await page.locator('#btn-exploration').click();
     assert.equal(await page.locator('#depth-progress').textContent(), '第 1 / 96 题');
     assert.equal(await page.locator('#depth-next').isEnabled(), false);
+    assert.equal(await page.locator('#page-depth-quiz input, #page-depth-quiz textarea, .depth-note, [data-missing]').count(), 0);
+    assert.equal(await page.locator('#depth-skip').count(), 1);
     const firstId = await page.locator('#depth-text').getAttribute('data-question-id');
-    await page.locator('[data-missing="uncertain"]').click();
+    await page.locator('#depth-skip').click();
+    assert.equal(await page.evaluate(id => RCT_DEPTH.state.draft.answers[id], firstId), 'skipped');
     await page.reload(); await page.locator('#btn-exploration').click();
     assert.notEqual(await page.locator('#depth-text').getAttribute('data-question-id'), firstId);
     await page.locator('#depth-prev').click();
-    assert.equal(await page.locator('[data-missing="uncertain"]').getAttribute('aria-pressed'), 'true');
-    await page.locator('.depth-note summary').click();
-    await page.locator('#note-context').fill('合成输入的具体条件');
-    await page.locator('#note-example').fill('只用于测试保存与回看');
+    assert.equal(await page.locator('#depth-skip').getAttribute('aria-pressed'), 'true');
     const personal = await complete(page, types.samples.find(s => s.target === 'T13').answers);
     assert.equal(personal.classification.primary.id, 'T13');
     assert.equal(personal.derived.coveredTopics, 48);
-    assert.equal(personal.notes[firstId].context, '合成输入的具体条件');
+    assert.equal(Object.hasOwn(personal, 'notes'), false);
+    assert.equal(Object.hasOwn(personal, 'consent'), false);
     assert.ok((await page.locator('#depth-report').textContent()).includes('收益优先与侵占'));
     assert.ok((await page.locator('#depth-report').textContent()).includes('可能后果'));
     await page.screenshot({ path: path.join(output, 'desktop-personal.png'), fullPage: false });
@@ -79,7 +79,7 @@ async function consent(page) {
     assert.equal(Object.keys(exportedPersonal.answers).length, 96);
     await page.locator('#report-followup').click();
     assert.equal(await page.locator('#depth-progress').textContent(), '第 97 / 120 题');
-    await page.locator('[data-missing="no_experience"]').click();
+    await page.locator('#depth-skip').click();
     await page.locator('#depth-next').click(); await page.locator('#depth-stop-followup').click();
     const partial = await page.evaluate(() => RCT_DEPTH.state.report);
     assert.equal(partial.classification.primary.id, 'T13'); assert.equal(Object.keys(partial.answers).length, 97);
@@ -93,14 +93,17 @@ async function consent(page) {
       const original = RCT_DEPTH.storage.list('reports').find(r => r.reportId === id);
       return Object.keys(original.answers).length;
     }, personal.reportId), 96);
-    facts.push({ personal: '96 core, paused at 97, resumed 120, expanded 144; type stable and first snapshot intact' });
+    facts.push({ personal: '96 core, paused at 97, resumed 120, expanded 144; type stable and first snapshot intact',
+      simplifiedControls: 'four choices and one skip, no note fields; skipped remains missing after reload' });
 
     await page.locator('#page-depth-report [data-home]').click();
-    await page.locator('[data-start="marriage"]').click(); await consent(page);
+    await page.locator('[data-start="marriage"]').click(); await directMarriage(page);
     const a = await complete(page);
     assert.equal(Object.keys(a.answers).length, 48); assert.equal(a.derived.coveredTopics, 12);
-    await page.locator('#report-new').click(); await consent(page);
+    assert.equal(Object.hasOwn(a, 'consent'), false);
+    await page.locator('#report-new').click(); await directMarriage(page);
     const b = await complete(page, { 'M05-02': 'M05-02:4' });
+    facts.push({ marriageEntry: 'direct first question and retake; no age or consent confirmation' });
     await page.locator('#report-open-pair').click();
     await page.locator('#pair-a').selectOption(a.reportId); await page.locator('#pair-b').selectOption(a.reportId);
     await page.locator('#pair-load').click();
@@ -149,8 +152,10 @@ async function consent(page) {
       phone.on('pageerror', e => phoneErrors.push(e.message));
       await phone.goto(base);
       assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-      await phone.locator('[data-start="marriage"]').click(); await consent(phone);
-      const choices = Object.fromEntries(M.items.filter(q => q.scope === 'marriage').map(q => [q.id, 'declined']));
+      await phone.locator('[data-start="marriage"]').click(); await directMarriage(phone);
+      assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      await phone.screenshot({ path: path.join(output, `mobile-${width}-quiz.png`), fullPage: false });
+      const choices = Object.fromEntries(M.items.filter(q => q.scope === 'marriage').map(q => [q.id, 'skipped']));
       await complete(phone, choices);
       assert.ok((await phone.locator('#depth-report h2').first().textContent()).includes('尚无可解释证据'));
       assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -174,7 +179,7 @@ async function consent(page) {
     const quota = await browser.newContext();
     await quota.addInitScript(() => Storage.prototype.setItem = () => { throw new Error('QuotaExceededError'); });
     const qpage = await quota.newPage(); await qpage.goto(base); await qpage.locator('#btn-exploration').click();
-    await qpage.locator('[data-missing="declined"]').click();
+    await qpage.locator('#depth-skip').click();
     assert.ok((await qpage.locator('#depth-quiz-status').textContent()).includes('内存'));
     await qpage.locator('#depth-pause').click(); await qpage.locator('#btn-history').click();
     const memory = await exportJSON(qpage, '#history-export', 'quota-memory.json');

@@ -9,7 +9,6 @@ const fixtures = require('./fixtures/depth-types.json');
 
 function draft(scope, optionIndex = 0) {
   const d = D.newDraft(scope);
-  if (scope === 'marriage') d.consent = { adult: true, voluntary: true };
   d.order.forEach(id => D.choose(d, id, D.items.get(id).options[optionIndex].id));
   return d;
 }
@@ -42,8 +41,10 @@ test('production model has exact coverage and no intimate questions in personal 
 });
 
 test('missing and foreign selections never become average scores or types', () => {
-  const s = E.summarize('personal', { 'P17-01': 'declined', 'P17-02': 'uncertain', 'P28-01': 'no_experience' });
+  const s = E.summarize('personal', { 'P17-01': 'declined', 'P17-02': 'uncertain', 'P28-01': 'no_experience', 'P18-01': 'skipped' });
   assert.equal(s.rows.length, 0); assert.equal(s.indicators.length, 0);
+  assert.equal(s.missing.length, 4);
+  assert.equal(s.missing.find(m => m.questionId === 'P18-01').reason, 'skipped');
   assert.equal(s.coveredTopics, 0); assert.equal(E.classify({}).status, 'incomplete');
   const bad = E.summarize('personal', { 'P17-01': 'P28-01:1', 'M01-01': 'M01-01:1' });
   assert.equal(bad.status, 'invalid_input'); assert.equal(bad.rows.length, 0);
@@ -112,7 +113,29 @@ test('snapshots are independent, imports recompute derived data, invalid orders 
   assert.throws(() => D.interpret({ ...r, version: 'old' }));
   assert.throws(() => D.interpret({ ...r, order: [...r.order].reverse() }));
   assert.throws(() => D.interpret({ ...r, answers: { ...r.answers, 'P17-01': 'foreign' } }));
-  assert.throws(() => D.snapshot(D.newDraft('marriage')));
+  assert.doesNotThrow(() => D.snapshot(D.newDraft('marriage')));
+});
+
+test('new flows require no notes or consent; v1 reports and drafts keep their original metadata', () => {
+  for (const scope of ['personal', 'marriage']) {
+    const fresh = D.newDraft(scope);
+    assert.equal(Object.hasOwn(fresh, 'notes'), false);
+    assert.equal(Object.hasOwn(fresh, 'consent'), false);
+    assert.doesNotThrow(() => D.validateDraft(fresh));
+    const r = D.snapshot(draft(scope));
+    assert.equal(Object.hasOwn(r, 'notes'), false);
+    assert.equal(Object.hasOwn(r, 'consent'), false);
+    const oldDraft = { ...draft(scope), engineVersion: 'rct-depth-engine-v1',
+      consent: { adult: true, voluntary: true }, notes: { [r.order[0]]: { context: '历史注记', voluntary: true } } };
+    assert.doesNotThrow(() => D.validateDraft(oldDraft));
+    const oldReport = { ...D.snapshot(oldDraft), engineVersion: 'rct-depth-engine-v1' };
+    const before = JSON.stringify(oldReport);
+    const displayed = D.interpret(oldReport);
+    assert.equal(displayed.engineVersion, 'rct-depth-engine-v1');
+    assert.deepEqual(displayed.notes, oldDraft.notes);
+    assert.equal(JSON.stringify(oldReport), before);
+    assert.deepEqual(displayed.derived, r.derived);
+  }
 });
 
 test('append keeps immutable snapshots and separates comparison identities', () => {

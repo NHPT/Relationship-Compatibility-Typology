@@ -2,7 +2,8 @@
   'use strict';
   const model = root.RCT_MODEL || require('./model.json');
   const engine = root.RCT_ENGINE || require('./engine.js');
-  const ENGINE_VERSION = 'rct-depth-engine-v1';
+  const ENGINE_VERSION = 'rct-depth-engine-v2';
+  const compatibleEngine = version => ['rct-depth-engine-v1', ENGINE_VERSION].includes(version);
   const PREFIX = 'rct_human_depth_v1_';
   const items = new Map(model.items.map(q => [q.id, q]));
   const copy = value => JSON.parse(JSON.stringify(value));
@@ -20,12 +21,11 @@
   }
   function newDraft(scope) {
     return { mode: scope, bankVersion: model.version, engineVersion: ENGINE_VERSION,
-      order: coreOrder(scope), answers: {}, notes: {}, cursor: 0, stage: 'core',
-      consent: scope === 'marriage' ? null : undefined, updatedAt: new Date().toISOString() };
+      order: coreOrder(scope), answers: {}, cursor: 0, stage: 'core', updatedAt: new Date().toISOString() };
   }
   function validateDraft(draft) {
     if (!draft || !scopeOK(draft.mode) || draft.bankVersion !== model.version ||
-        draft.engineVersion !== ENGINE_VERSION) throw new Error('草稿模式或版本不兼容；原记录已保留');
+        !compatibleEngine(draft.engineVersion)) throw new Error('草稿模式或版本不兼容；原记录已保留');
     const scope = draft.mode, expected = coreOrder(scope), order = draft.order;
     if (!Array.isArray(order) || order.length < expected.length || order.length > maxCount(scope) ||
         new Set(order).size !== order.length || expected.some((id, i) => order[i] !== id) ||
@@ -40,8 +40,6 @@
     }
     if (!Number.isInteger(draft.cursor) || draft.cursor < 0 || draft.cursor >= order.length ||
         !['core', 'automatic', 'expanded'].includes(draft.stage)) throw new Error('草稿进度格式无效');
-    if (scope === 'marriage' && (!draft.consent?.adult || !draft.consent?.voluntary))
-      throw new Error('婚恋草稿缺少成年与自愿确认');
     if (draft.notes !== undefined && (!draft.notes || typeof draft.notes !== 'object' || Array.isArray(draft.notes)))
       throw new Error('补充注记格式无效');
     for (const [id, note] of Object.entries(draft.notes || {})) {
@@ -66,12 +64,14 @@
     return { format: 'rct-depth-report', reportId: uid(), version: model.version,
       engineVersion: ENGINE_VERSION, scope: draft.mode, source: 'self_report_unverified',
       createdAt: new Date().toISOString(), order: copy(draft.order), answers: copy(draft.answers),
-      notes: copy(draft.notes || {}), consent: copy(draft.consent || null), parameters: copy(model.parameters),
+      ...(draft.notes !== undefined ? { notes: copy(draft.notes) } : {}),
+      ...(draft.consent !== undefined ? { consent: copy(draft.consent) } : {}),
+      parameters: copy(model.parameters),
       derived, classification: draft.mode === 'personal' ? engine.classify(draft.answers) : null };
   }
   function interpret(report) {
     if (!report || report.format !== 'rct-depth-report' || report.version !== model.version ||
-        report.engineVersion !== ENGINE_VERSION || !scopeOK(report.scope)) throw new Error('报告版本不兼容，保留原文查看');
+        !compatibleEngine(report.engineVersion) || !scopeOK(report.scope)) throw new Error('报告版本不兼容，保留原文查看');
     const draft = { ...newDraft(report.scope), order: report.order, answers: report.answers,
       notes: report.notes || {}, consent: report.consent, cursor: 0 };
     validateDraft(draft);
@@ -140,7 +140,7 @@
       }
     };
   }
-  root.RCT_DEPTH_DATA = { ENGINE_VERSION, PREFIX, model, items, copy, uid, coreOrder,
+  root.RCT_DEPTH_DATA = { ENGINE_VERSION, compatibleEngine, PREFIX, model, items, copy, uid, coreOrder,
     coreCount, maxCount, newDraft, validateDraft, choose, snapshot, interpret, store };
   if (typeof module !== 'undefined') module.exports = root.RCT_DEPTH_DATA;
 })(typeof window !== 'undefined' ? window : globalThis);

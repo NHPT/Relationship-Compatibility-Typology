@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="RCT 人性与婚恋深度测评：48个人主题、14种描述原型、12个婚恋领域。查看具体选择、风险行动、相反证据与未观察内容。">
   <title>RCT 人性与婚恋深度测评</title>
-  <link rel="stylesheet" href="css/style.css?v=20261124-depth-v1">
-  <link rel="stylesheet" href="css/depth.css?v=20261124-depth-v1">
+  <link rel="stylesheet" href="css/style.css?v=20261124-depth-v2">
+  <link rel="stylesheet" href="css/depth.css?v=20261124-depth-v2">
 </head>
 <body>
-  <main class="app" id="depth-app" data-release="20261124-depth-v1">
+  <main class="app" id="depth-app" data-release="20261124-depth-v2">
     <section id="page-home" class="page active">
       <header class="hero">
         <div class="brand"><span class="logo">RCT</span><div class="brand-text">
@@ -27,7 +27,7 @@
         <button type="button" class="mode-card" data-scene="love" data-start="marriage" style="--scene-color:var(--green-strong)">
           <span class="mode-kicker">12 个婚恋领域</span><span class="mode-title">婚恋深度测评</span>
           <span class="mode-desc">长期承诺、忠实约定、共同财务、照料分工与逆境中的选择。</span>
-          <span class="mode-count">48 题核心 · 成年自愿 <span aria-hidden="true">↗</span></span>
+          <span class="mode-count">48 题核心 · 直接开始 <span aria-hidden="true">↗</span></span>
         </button>
       </div>
       <div class="home-history">
@@ -40,16 +40,6 @@
       </details>
       <p id="home-status" class="storage-note muted" role="status"></p>
     </section>
-    <section id="page-consent" class="page">
-      <div class="quiz-scene-line"><strong>婚恋深度测评</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
-      <h2 class="depth-title">开始前，确认你的选择</h2>
-      <p>题目涉及共同生活、财务和亲密边界。没有伴侣也可回答情境题；没有相应经历时直接跳过，不需要猜测或披露私密细节。</p>
-      <div class="consent-fields">
-        <label><input type="checkbox" id="consent-adult">我已年满 18 周岁</label>
-        <label><input type="checkbox" id="consent-voluntary">我自愿进入婚恋测评，知道可以随时暂停或不愿回答</label>
-      </div>
-      <button type="button" id="consent-start" class="btn" disabled>进入婚恋测评</button>
-    </section>
     <section id="page-depth-quiz" class="page">
       <div class="quiz-scene-line"><strong id="depth-mode"></strong><button type="button" class="text-btn" id="depth-pause">保存并返回</button></div>
       <p id="depth-instruction" class="quiz-context muted"></p>
@@ -59,14 +49,9 @@
         <h2 id="depth-text" class="quiz-text" tabindex="-1"></h2>
         <p id="depth-followup-reason" class="muted"></p>
         <div id="depth-options" class="options" role="group" aria-labelledby="depth-text"></div>
-        <div id="depth-missing" class="missing-options" role="group" aria-label="跳过原因"></div>
-        <details class="depth-note"><summary>补充具体经历（自愿，不加权）</summary>
-          <label class="oc-field"><span>发生日期</span><input type="date" id="note-date"></label>
-          <label class="oc-field"><span>当时条件</span><input type="text" id="note-context" maxlength="2000"></label>
-          <label class="oc-field"><span>具体例子</span><textarea id="note-example" maxlength="2000" rows="3"></textarea></label>
-        </details>
         <div class="quiz-actions">
           <button type="button" id="depth-prev" class="btn btn-ghost">上一题</button>
+          <button type="button" id="depth-skip" class="btn btn-ghost" aria-pressed="false">跳过本题</button>
           <button type="button" id="depth-next" class="btn" disabled>下一题</button>
         </div>
         <button type="button" id="depth-stop-followup" class="text-btn hidden">结束补问，查看已有证据</button>
@@ -124,9 +109,9 @@
     </section>
     <noscript>本测评需要开启 JavaScript 才能在本地处理回答。</noscript>
   </main>
-  <script src="js/depth/model.js?v=20261124-depth-v1"></script>
-  <script src="js/depth/engine.js?v=20261124-depth-v1"></script>
-  <script src="js/depth/data.js?v=20261124-depth-v1"></script>
-  <script src="js/depth/app.js?v=20261124-depth-v1"></script>
+  <script src="js/depth/model.js?v=20261124-depth-v2"></script>
+  <script src="js/depth/engine.js?v=20261124-depth-v2"></script>
+  <script src="js/depth/data.js?v=20261124-depth-v2"></script>
+  <script src="js/depth/app.js?v=20261124-depth-v2"></script>
 </body>
 </html>
