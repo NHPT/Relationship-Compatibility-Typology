@@ -18,16 +18,38 @@
     T14: { glyph: '缓', name: '缓争', animal: '鹿', symbol: 'deer', lead: '倾向先缓和冲突，再面对分歧。', focus: '缓和与节奏' }
   };
   const marriage = {
-    R01: { glyph: '守', name: '守诺', axis: 'commitment', animal: '大象', symbol: 'elephant', lead: '重视长期约定，也关注变化时的交接。', focus: '持续承诺' },
-    R02: { glyph: '诚', name: '坦诚', axis: 'transparency', animal: '海豚', symbol: 'dolphin', lead: '倾向说清重要事实，让彼此知情决定。', focus: '信息透明' },
-    R03: { glyph: '担', name: '共担', axis: 'responsibility', animal: '河狸', symbol: 'beaver', lead: '愿意把共同生活的责任落实到行动。', focus: '家庭分担' },
-    R04: { glyph: '界', name: '知界', axis: 'boundaries', animal: '雪豹', symbol: 'leopard', lead: '重视拒绝权、隐私与各自的自主空间。', focus: '尊重边界' },
-    R05: { glyph: '财', name: '慎财', axis: 'fairness', animal: '陆龟', symbol: 'tortoise', lead: '倾向讲清预算、共同资金与风险责任。', focus: '共同财务' },
-    R06: { glyph: '伴', name: '相伴', axis: 'care', animal: '企鹅', symbol: 'penguin', lead: '愿意在日常与困难中提供实际照料。', focus: '长期照料' },
-    R07: { glyph: '和', name: '和解', axis: 'learning', animal: '鹿', symbol: 'deer', lead: '倾向回谈分歧、承认失误并跟进修复。', focus: '冲突修复' },
-    R08: { glyph: '共', name: '共建', axis: 'creation', animal: '乌鸦', symbol: 'raven', lead: '愿意共同讨论未来，并持续推进计划。', focus: '未来投入' }
+    R01: { glyph: '守', name: '守诺', axis: 'commitment', animal: '大象', symbol: 'elephant', lead: '重视关系中的长期约定与变化告知。', focus: '长期约定' },
+    R02: { glyph: '诚', name: '坦诚', axis: 'transparency', animal: '海豚', symbol: 'dolphin', lead: '倾向讲清忠实约定和影响关系的重要事实。', focus: '忠实坦诚' },
+    R03: { glyph: '担', name: '共担', axis: 'responsibility', animal: '河狸', symbol: 'beaver', lead: '重视家务、照料与育儿中的知情分工。', focus: '生活分工' },
+    R04: { glyph: '敬', name: '相敬', axis: 'boundaries', animal: '雪豹', symbol: 'leopard', lead: '重视伴侣的隐私、拒绝权与自主选择。', focus: '关系自主' },
+    R05: { glyph: '财', name: '慎财', axis: 'fairness', animal: '陆龟', symbol: 'tortoise', lead: '倾向讲清预算、共同资金与风险责任。', focus: '财务协商' },
+    R06: { glyph: '济', name: '共济', axis: 'care', animal: '企鹅', symbol: 'penguin', lead: '愿意在日常照料与困境中分担实际压力。', focus: '照料互助' },
+    R07: { glyph: '和', name: '和解', axis: 'learning', animal: '鹿', symbol: 'deer', lead: '倾向回谈分歧、承认失误并跟进修复。', focus: '分歧修复' },
+    R08: { glyph: '共', name: '共建', axis: 'creation', animal: '乌鸦', symbol: 'raven', lead: '愿意共同商量生育、居住与长期计划。', focus: '未来共识' }
   };
-  const VERSION = 'rct-identity-v1';
+  const palettes = {
+    personal: {
+      T01: ['#2e7152', '#e8f0e8'], T02: ['#126e77', '#e3f1f1'],
+      T03: ['#aa434c', '#fae9e8'], T04: ['#3c6496', '#e8eef7'],
+      T05: ['#78601a', '#f3efd9'], T06: ['#9e541f', '#f8eddf'],
+      T07: ['#7953a8', '#eee8f6'], T08: ['#806047', '#f0e9e1'],
+      T09: ['#934066', '#f5e6ed'], T10: ['#a13b8c', '#f5e6f2'],
+      T11: ['#4d58a5', '#e9eaf7'], T12: ['#176f64', '#e1f0ea'],
+      T13: ['#8a5814', '#f4ebdb'], T14: ['#566d31', '#edf0e1']
+    },
+    marriage: {
+      R01: ['#873654', '#f2e5ec'], R02: ['#327384', '#e5eff2'],
+      R03: ['#964930', '#f5e8e0'], R04: ['#5c64ab', '#e9eaf5'],
+      R05: ['#76611d', '#f2eedc'], R06: ['#a54865', '#f6e7ed'],
+      R07: ['#286f5e', '#e5f0ea'], R08: ['#7059a2', '#eee9f5']
+    }
+  };
+  for (const [scope, catalog] of Object.entries({ personal, marriage })) {
+    Object.entries(catalog).forEach(([id, type]) => {
+      [type.color, type.soft] = palettes[scope][id];
+    });
+  }
+  const VERSION = 'rct-identity-v2';
   const has = (row, tags) => row.tags.some(t => tags.includes(t));
   function personalRows(report) {
     const core = report.derived.rows.filter(r => r.phase === 'core');
@@ -45,17 +67,9 @@
   function marriageRows(report, axes) {
     return Object.entries(marriage).map(([id, type]) => {
       const a = axes.find(x => x.id === type.axis);
-      // Naming uses core responses only; later risk observations stay visible separately.
-      const definitions = {
-        commitment: { tags: ['k'] }, transparency: { tags: ['h'] },
-        responsibility: { tags: ['r'], topics: [3, 4, 9] }, boundaries: { tags: ['b'] },
-        fairness: { tags: ['f', 'j'], topics: [5, 6] }, care: { tags: ['e'], topics: [3, 4, 9] },
-        learning: { tags: ['r', 'l', 'b', 'T'], topics: [8] }, creation: { tags: ['h', 'j', 'k'], topics: [12] }
-      };
-      const d = definitions[type.axis];
-      const counterCount = report.derived.rows.filter(r => r.phase === 'core' &&
-        (!d.topics || d.topics.includes(r.topicId)) && has(r, d.tags)).length;
-      return { id, ...type, value: a.value, count: a.supportCount, observed: a.observedCount, counterCount };
+      // The axis is the single source for marriage opportunities and core counterinformation.
+      return { id, ...type, value: a.value, count: a.supportCount,
+        observed: a.observedCount, counterCount: a.coreRiskCount };
     });
   }
   function build(report, axes) {
@@ -77,7 +91,8 @@
         : enough ? '目前的取舍较分散，按下方维度理解更清楚。' : '已有一些观察，更多回答能帮助看清你的主要取向。';
     return { version: VERSION, scope: report.scope, title, lead, rows, selected, enough,
       subtitle: selected.length ? selected.map(r => r.name).join(' / ') : '倾向随情境变化',
-      symbols: selected.slice(0, 2).map(r => ({ animal: r.animal, symbol: r.symbol })),
+      color: selected[0]?.color || '#52665a', soft: selected[0]?.soft || '#e8ece5',
+      symbols: selected.slice(0, 2).map(r => ({ animal: r.animal, symbol: r.symbol, color: r.color })),
       catalog: report.scope === 'personal' ? personal : marriage };
   }
   root.RCT_IDENTITY = { build, personal, marriage, VERSION };

@@ -14,7 +14,8 @@
 .depth-library p { font-size: 13px; margin-top: 12px; }
 .type-library-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; margin: 8px 0 18px; }
 .type-library-list article { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
-.type-library-list .library-glyph { color: var(--green-strong); font-size: 26px; font-family: "Songti SC", serif; width: 34px; text-align: center; }
+.library-heading { font-size: 13px; font-weight: 500; margin-top: 18px; }
+.type-library-list .library-glyph { color: var(--trait-color); background: var(--trait-soft); border-radius: 50%; font-size: 24px; font-family: "Songti SC", serif; width: 40px; height: 40px; display: grid; place-items: center; }
 .type-library-list p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
 #depth-skip.selected { background: var(--green-soft); color: var(--green-strong); border-color: var(--green); }
 #page-depth-quiz .quiz-actions .btn { min-width: 0; padding-inline: 14px; }
@@ -31,7 +32,7 @@
 .profile-summary { grid-column: 1 / -1; max-width: 680px; font-size: 15px; line-height: 1.8; margin-top: 4px; }
 .profile-emblem { color: var(--green-strong); justify-self: end; text-align: center; }
 .profile-symbols { position: relative; display: flex; justify-content: center; align-items: center; width: 186px; height: 186px; border-radius: 50%; background: var(--green-soft); }
-.profile-symbols::before { content: ""; position: absolute; inset: 9px; border: 1px solid #c7d5c4; border-radius: 50%; }
+.profile-symbols::before { content: ""; position: absolute; inset: 9px; border: 1px solid currentColor; opacity: .16; border-radius: 50%; }
 .animal-symbol { display: block; width: 142px; height: 142px; }
 .profile-emblem.paired .animal-symbol { width: 94px; height: 116px; }
 .profile-emblem.paired .animal-symbol:first-child { margin-top: -22px; margin-right: -2px; }
@@ -39,9 +40,9 @@
 .profile-emblem figcaption { margin-top: 9px; font-size: 11px; letter-spacing: 2px; color: var(--muted); }
 .profile-highlights { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 20px; padding-top: 22px; border-top: 1px solid var(--line); }
 .profile-highlight { display: flex; gap: 16px; align-items: center; }
-.profile-highlight > span { font-family: "Songti SC", "Noto Serif CJK SC", serif; font-size: 38px; line-height: 1; color: var(--green-strong); }
+.profile-highlight > span { font-family: "Songti SC", "Noto Serif CJK SC", serif; font-size: 38px; line-height: 1; color: var(--trait-color); }
 .profile-highlight strong { font-size: 13px; font-weight: 500; }
-.profile-highlight p { font-size: 20px; color: var(--green-strong); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.profile-highlight p { font-size: 20px; color: var(--trait-color); font-variant-numeric: tabular-nums; margin-top: 2px; }
 .profile-highlight small { font-size: 10px; color: var(--muted); white-space: nowrap; margin-left: 3px; }
 .profile-ratio-note { grid-column: 1 / -1; color: var(--muted); font-size: 10px; margin-top: 2px; }
 .report-section { padding: 28px 0; border-bottom: 1px solid var(--line); }
@@ -100,10 +101,10 @@ summary::-webkit-details-marker { display: none; }
 .affinity-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 30px; }
 .affinity-entry { border-bottom: 1px solid var(--line); min-width: 0; align-self: start; }
 .affinity-entry > summary { display: grid; grid-template-columns: 48px 1fr 12px; gap: 14px; align-items: center; list-style: none; cursor: pointer; padding: 18px 0; min-height: 90px; }
-.affinity-symbol { color: var(--green-strong); }
+.affinity-symbol { color: var(--trait-color); background: var(--trait-soft); border-radius: 50%; }
 .affinity-symbol .animal-symbol { width: 48px; height: 48px; }
 .affinity-entry strong { font-size: 14px; font-weight: 500; }
-.affinity-entry small { color: var(--green-strong); font-family: "Songti SC", serif; font-size: 13px; margin-left: 7px; }
+.affinity-entry small { color: var(--trait-color); font-family: "Songti SC", serif; font-size: 13px; margin-left: 7px; }
 .affinity-reason { display: block; color: var(--muted); font-size: 12px; line-height: 1.7; margin-top: 5px; }
 .affinity-expand { color: var(--muted); font-size: 18px; }
 .affinity-entry[open] .affinity-expand { transform: rotate(45deg); }

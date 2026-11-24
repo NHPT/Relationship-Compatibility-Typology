@@ -170,7 +170,7 @@
       <div class="affinity-tabs" role="tablist" aria-label="类型相处参考">${a.groups.map((g, i) =>
         `<button type="button" role="tab" id="affinity-tab-${g.id}" aria-controls="affinity-panel-${g.id}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-affinity-tab="${g.id}">${esc(g.label)}<span>${g.entries.length}</span></button>`).join('')}</div>
       ${a.groups.map((g, i) => `<div class="affinity-panel${i ? ' hidden' : ''}" role="tabpanel" id="affinity-panel-${g.id}" aria-labelledby="affinity-tab-${g.id}" tabindex="0">
-        <div class="affinity-list">${g.entries.map(t => `<details class="affinity-entry" data-affinity-type="${esc(t.id)}">
+        <div class="affinity-list">${g.entries.map(t => `<details class="affinity-entry" data-affinity-type="${esc(t.id)}" style="--trait-color:${esc(t.color)};--trait-soft:${esc(t.soft)}">
           <summary><span class="affinity-symbol" aria-hidden="true">${V.animal(t.symbol, t.animal)}</span><span><strong>${esc(t.name)}型 <small>${esc(t.glyph)}</small></strong><span class="affinity-reason">${esc(t.reason)}</span></span><span class="affinity-expand" aria-hidden="true">+</span></summary>
           <p class="affinity-discussion">可以先谈：${esc(t.discussion)}</p></details>`).join('') || '<p class="muted">当前没有明确落入这一组的类型。</p>'}</div></div>`).join('')}
       <p class="affinity-note">${esc(a.note)}</p></section>`;
@@ -196,18 +196,22 @@
       rawView({ title: error.message, record: rawReport, raw: JSON.stringify(rawReport, null, 2) }); return;
     }
     const report = state.report, summary = report.derived, profile = P.present(report), n = profile.narrative;
+    const page = $('page-depth-report');
+    ['--green', '--green-strong', '--type-color'].forEach(key => page.style.setProperty(key, profile.identity.color));
+    page.style.setProperty('--green-soft', profile.identity.soft);
     $('report-mode').textContent = modeNames[report.scope];
     const highlights = profile.identity.selected.length ? profile.identity.selected :
       profile.axes.filter(a => a.value !== null).sort((a, b) => b.value - a.value).slice(0, 3);
     $('depth-report').innerHTML = `<header class="profile-hero">
-      <div class="profile-intro"><p class="profile-eyebrow">${esc(n.eyebrow)}</p><h2>${esc(n.title)}</h2>
+      <div class="profile-intro"><p class="profile-eyebrow">${esc(n.eyebrow)}</p><h2>${profile.identity.selected.length > 1
+        ? profile.identity.selected.map(t => `<span class="profile-name-part" style="color:${esc(t.color)}">${esc(t.glyph)}</span>`).join(' · ') : esc(n.title)}</h2>
         <p class="profile-subtitle">${esc(n.subtitle)}</p></div>
       <figure class="profile-emblem${n.symbols.length > 1 ? ' paired' : ''}">
-        <div class="profile-symbols">${n.symbols.length ? n.symbols.map(s => V.animal(s.symbol, s.animal)).join('') : V.pattern()}</div>
+        <div class="profile-symbols">${n.symbols.length ? n.symbols.map(s => V.animal(s.symbol, s.animal, s.color)).join('') : V.pattern()}</div>
         <figcaption>${esc(n.symbols.map(s => s.animal).join(' · ') || '星图象征')}</figcaption>
       </figure><p class="profile-summary">${esc(n.description)}</p>
       ${highlights.length ? `<div class="profile-highlights">${highlights.map(t =>
-        `<div class="profile-highlight"><span>${esc(t.glyph || '·')}</span><div><strong>${esc(t.name)}</strong><p>${t.value}% <small>采用比例</small></p></div></div>`).join('')}</div>` : ''}
+        `<div class="profile-highlight" style="--trait-color:${esc(t.color || profile.identity.color)}"><span>${esc(t.glyph || '·')}</span><div><strong>${esc(t.name)}</strong><p>${t.value}% <small>采用比例</small></p></div></div>`).join('')}</div>` : ''}
       ${highlights.length ? '<p class="profile-ratio-note">相关题中体现该取向的比例；取向可重叠，不相加为 100%。</p>' : ''}
       </header>
       <section class="report-section profile-radar-section"><div class="section-heading"><h3>维度解析</h3><span>点击维度，展开解析</span></div>
@@ -365,8 +369,11 @@
         pendingImport: state.importRaw } }, 'RCT-全部本地记录.json');
   }
   function init() {
-    $('type-library').innerHTML = `<div class="type-library-list">${M.prototypes.map(t =>
-      `<article><span class="library-glyph">${esc(window.RCT_IDENTITY.personal[t.id].glyph)}</span><div><strong>${esc(window.RCT_IDENTITY.personal[t.id].name)}型</strong><p>${esc(window.RCT_IDENTITY.personal[t.id].focus)}</p></div></article>`).join('')}</div>`;
+    $('type-library').innerHTML = ['personal', 'marriage'].map(scope => {
+      const catalog = window.RCT_IDENTITY[scope];
+      return `<h3 class="library-heading">${scope === 'personal' ? '个人 · 14 个基础类型' : '婚恋 · 8 个基础取向'}</h3><div class="type-library-list">${Object.entries(catalog).map(([id, t]) =>
+        `<article data-library-type="${esc(id)}" style="--trait-color:${esc(t.color)};--trait-soft:${esc(t.soft)}"><span class="library-glyph">${esc(t.glyph)}</span><div><strong>${esc(t.name)}型</strong><p>${esc(t.focus)}</p></div></article>`).join('')}</div>`;
+    }).join('');
     document.querySelectorAll('[data-start]').forEach(b => b.onclick = () => start(b.dataset.start));
     document.querySelectorAll('[data-home]').forEach(b => b.onclick = home);
     $('btn-history').onclick = history;

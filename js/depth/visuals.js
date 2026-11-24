@@ -18,10 +18,10 @@
     eagle: '<path d="M22 72q-3-36 23-46 18-17 35 2l24 14-25 8q-3 21-22 31L37 96l-17 7 8-17M45 27q11 16 34 19M32 48l21 2m-24 8 21 3m-23 7 22 3m10 7 18 17-28-7"/><path d="m82 37 11 7-12 5"/><circle cx="70" cy="33" r="2"/>',
     deer: '<path d="M35 48q25-17 50 0l-8 35-17 23-17-23ZM35 48 18 36l5 20 14 6m48-14 17-12-5 20-14 6M39 38 27 21l1-16m-1 16L13 15m17 11 11-14M81 38l12-17-1-16m1 16 14-6M90 26 79 12"/><path d="m40 58 13 6m27-6-13 6m-15 20 8 5 8-5-8-4Zm8 5v9"/><circle cx="48" cy="64" r="2"/><circle cx="72" cy="64" r="2"/>'
   };
-  function animal(symbol, animalName) {
+  function animal(symbol, animalName, color) {
     const drawing = animals[symbol];
     if (!drawing) return pattern();
-    return `<svg class="animal-symbol" viewBox="0 0 120 120" role="img" aria-label="${escape(animalName)}象征图案">
+    return `<svg class="animal-symbol"${color ? ` style="color:${escape(color)}"` : ''} viewBox="0 0 120 120" role="img" aria-label="${escape(animalName)}象征图案">
       <title>${escape(animalName)} · 视觉象征</title><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${drawing}</g></svg>`;
   }
   function pattern() {

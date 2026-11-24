@@ -3,7 +3,7 @@
   const M = root.RCT_MODEL || require('./model.json');
   const I = root.RCT_IDENTITY || require('./identity.js');
   const A = root.RCT_AFFINITIES || require('./affinities.js');
-  const PRESENTATION_VERSION = 'rct-profile-v2';
+  const PRESENTATION_VERSION = 'rct-profile-v3';
   const types = {
     T01: { animal: '大象', symbol: 'elephant', theme: '守约', title: '原则守约型',
       description: '你更重视约定、真实信息与规则的一致性。面对取舍时，你倾向先确认哪些责任需要承担、哪些变化应当告知。',
@@ -90,23 +90,54 @@
       risk: '', task: '点子、试验、完成度与作品质量分别看；这些选择不能保证未来能力或成就。' }
   ];
   const marriageAxes = [
-    { ...baseAxes[0], name: '持续承诺' },
-    baseAxes[1],
-    { ...baseAxes[2], name: '家庭分担', topicIds: [3, 4, 9] },
-    baseAxes[3],
-    { ...baseAxes[4], name: '共同财务', positive: ['F', 'J'], negative: ['f', 'j'], topicIds: [5, 6],
+    { id: 'commitment', name: '长期约定', topicIds: [1, 12], positive: ['K'], negative: ['k'],
+      high: '你倾向讲清长期关系的约定，计划变化时及时告知并处理对方的投入。',
+      low: '长期约定与变化交接还不够突出，需要说清时间预期和退出安排。',
+      risk: '长期计划变化时，可能出现违约或让伴侣突然承担退出成本。',
+      task: '核对关系时间预期、变化告知与分开时的交接。',
+      short: ['倾向落实长期约定并告知变化。', '长期投入会随现实条件取舍。', '需要讲清关系预期与退出交接。'] },
+    { id: 'transparency', name: '忠实坦诚', topicIds: [2, 5, 6, 12], positive: ['H'], negative: ['h'],
+      high: '你倾向明确忠实约定，披露交往、财务与未来安排中影响伴侣决定的事实。',
+      low: '关系中的相关披露还不够突出，需要核对哪些事实应在决定前说明。',
+      risk: '重要交往、债务或计划可能没有充分告知，影响伴侣的知情决定。',
+      task: '核对忠实约定与事实披露；这不等于验证现实忠诚。',
+      short: ['倾向说清关系约定与重要事实。', '披露时机与范围会随关系情境取舍。', '需要讲清交往、财务与计划变化。'] },
+    { id: 'responsibility', name: '生活分工', topicIds: [3, 4, 7], positive: ['K', 'F', 'J', 'R'], negative: ['k', 'f', 'r'],
+      high: '你倾向按双方知情的安排分担家务、照料、家庭支持与育儿任务。',
+      low: '共同生活的知情分工还不够突出，需要明确谁负责、资源怎样分配。',
+      risk: '分工中可能出现违约、转嫁成本或回避责任。',
+      task: '核对家务、隐形劳动、家庭支持与育儿的实际分工。',
+      short: ['倾向知情分工并持续承担任务。', '家庭任务会随资源与条件调整。', '需要把共同生活的分工说具体。'] },
+    { id: 'boundaries', name: '关系自主', topicIds: [2, 4, 7, 10, 11], positive: ['B'], negative: ['b'],
+      high: '你倾向保留伴侣的隐私、拒绝权、生育自主与亲密协商空间。',
+      low: '关系中的自主空间还不够明确，需要确认拒绝与不同选择是否被尊重。',
+      risk: '面对拒绝或意见分歧时，可能对伴侣施压或限制其自主。',
+      task: '核对伴侣能否自由拒绝、保留隐私并自主决定是否离开。',
+      short: ['倾向尊重伴侣的拒绝与自主选择。', '共同需要与个人空间会随情境取舍。', '需要保留拒绝、隐私与生育自主。'] },
+    { id: 'fairness', name: '财务协商', positive: ['F', 'J'], negative: ['f', 'j'], topicIds: [5, 6],
       high: '你更倾向把共同资金、消费预算和风险责任讲清楚，重视双方知情同意。',
       low: '共同预算与风险责任在目前选择中不够明确，需要确认债务、消费和谁来兜底。',
-      risk: '财务安排中存在未充分告知、未经同意占用资源或要求他人兜底的倾向。' },
-    { ...baseAxes[5], name: '长期照料', topicIds: [3, 4, 9] },
-    { ...baseAxes[6], name: '冲突修复', positive: ['R', 'L', 'B'], negative: ['r', 'l', 'b', 'T'], topicIds: [8],
+      risk: '财务安排中存在未充分告知、未经同意占用资源或要求他人兜底的倾向。',
+      task: '核对共同预算、债务、资金授权与亏损由谁承担。',
+      short: ['倾向共同确认预算与风险责任。', '消费与共同承担会随资源取舍。', '需要讲清资金授权与兜底责任。'] },
+    { id: 'care', name: '照料互助', topicIds: [3, 9], positive: ['E', 'J', 'R'], negative: ['e', 'r'],
+      high: '你倾向在日常照料、失业或疾病中提供实际支持，并商量可持续的分担。',
+      low: '持续照料与困境支持还不够突出，需要核对困难中谁在承担实际压力。',
+      risk: '照料压力上升时，可能贬低对方处境或突然回避分担。',
+      task: '核对日常照料、患病失业时的帮助与各自可承受的限度。',
+      short: ['倾向在照料与困境中分担压力。', '互助投入会随资源与处境取舍。', '需要更多实际照料与困难支持。'] },
+    { id: 'learning', name: '分歧修复', positive: ['R', 'L', 'B'], negative: ['r', 'l', 'b', 'T'], topicIds: [8],
       high: '你更倾向在冷静后继续讨论，承认失误并修复，而不是让争执持续累积。',
       low: '回谈和具体修复在目前选择中不够突出，需要明确暂停时间、后续行动和重复问题的处理。',
-      risk: '分歧中存在失联、羞辱、报复或以压力迫使对方让步的倾向。' },
-    { ...baseAxes[7], name: '未来投入', positive: ['G', 'H', 'J', 'K'], negative: ['h', 'j', 'k'], topicIds: [12],
-      high: '你更倾向共同讨论未来计划，并说明变化如何影响对方的投入。',
-      low: '共同计划的推进与变化告知在目前选择中不够明确，长期意愿还需落实成行动。',
-      risk: '未来安排变化时，存在单方决定、隐瞒或转嫁投入成本的倾向。' }
+      risk: '分歧中存在失联、羞辱、报复或以压力迫使对方让步的倾向。',
+      task: '核对争执后的回谈时间、具体补救与重复问题的处理。',
+      short: ['倾向回谈分歧并跟进修复。', '回谈与修复会随冲突条件取舍。', '需要约定暂停多久以及怎样回谈。'] },
+    { id: 'creation', name: '未来共识', positive: ['G', 'H', 'J', 'K', 'F', 'B'], negative: ['h', 'j', 'k', 'b', 'f'], topicIds: [7, 12],
+      high: '你倾向共同商量生育、居住与职业安排，尊重自愿并说明计划变化。',
+      low: '未来共同安排还不够明确，需要确认各自意愿与计划变化的处理。',
+      risk: '生育或长期安排中，可能单方决定、施压或转嫁投入成本。',
+      task: '核对生育自愿、居住职业目标与计划改变时的共同决定。',
+      short: ['倾向共同商量长期计划与各自意愿。', '共同计划会随目标与条件取舍。', '需要确认生育、居住与职业共识。'] }
   ];
   const riskCopy = {
     '信息透明': ['重要信息的隐瞒', '在利益、错误或关系变化中，存在没有充分告知相关方的倾向，可能让他人基于不完整的信息做决定。', '及时说明事实和真实顾虑'],
@@ -159,11 +190,12 @@
         ? `${def.high} 但这种做法并非在各种情境中都同样突出，取舍会受到条件影响。` : def.low;
     if (risks.length && def.risk) description += ` ${def.risk}`;
     const short = !covered ? '信息还不充分，暂不判断高低。'
-      : axisCopy[def.id][value >= 70 ? 0 : value >= 40 ? 1 : 2];
+      : (def.short || axisCopy[def.id])[value >= 70 ? 0 : value >= 40 ? 1 : 2];
     return { id: def.id, name: def.name, value, heading, description, task: def.task,
       short,
       supportCount: supports.length, observedCount: observed.length, opportunityCount: opportunities.length,
-      riskCount: risks.length, historyCount: observed.filter(r => r.mode === 'history').length };
+      riskCount: risks.length, coreRiskCount: risks.filter(r => r.phase === 'core').length,
+      historyCount: observed.filter(r => r.mode === 'history').length };
   }
   function narrative(identity) {
     return { title: identity.title, subtitle: identity.subtitle,

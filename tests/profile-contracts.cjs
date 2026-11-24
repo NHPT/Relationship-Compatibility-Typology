@@ -126,3 +126,48 @@ test('affinity comparisons are symmetric references with no fabricated probabili
   assert.equal(A.relationship('personal', 'T05', 'T06').group, 'friction');
   assert.equal(A.relationship('personal', 'T07', 'T08').group, 'complement');
 });
+test('personal types and marriage directions have separate names, glyphs and fixed readable colors', () => {
+  assert.equal(Object.keys(I.personal).length, 14);
+  assert.equal(Object.keys(I.marriage).length, 8);
+  const personalNames = new Set(Object.values(I.personal).map(t => t.name));
+  const personalGlyphs = new Set(Object.values(I.personal).map(t => t.glyph));
+  Object.values(I.marriage).forEach(t => {
+    assert.ok(!personalNames.has(t.name));
+    assert.ok(!personalGlyphs.has(t.glyph));
+  });
+  const catalog = Object.values({ ...I.personal, ...I.marriage });
+  assert.equal(new Set(catalog.map(t => t.color)).size, 22);
+  const luminance = hex => {
+    const rgb = hex.slice(1).match(/../g).map(c => parseInt(c, 16) / 255)
+      .map(c => c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4);
+    return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+  };
+  catalog.forEach(t => {
+    assert.match(t.color, /^#[a-f0-9]{6}$/);
+    assert.ok((luminance(t.soft) + .05) / (luminance(t.color) + .05) >= 4.5, t.name);
+  });
+});
+test('marriage has its own dimension copy and excludes unrelated situations from each opportunity set', () => {
+  const personal = P.present(report('personal')), baseline = report('marriage');
+  const original = P.present(baseline);
+  const names = new Set(personal.axes.map(a => a.name));
+  assert.ok(original.axes.every(a => !names.has(a.name)));
+  assert.ok(original.axes.find(a => a.id === 'boundaries').task.includes('伴侣'));
+  const offTopic = { ...baseline.answers, 'M01-02': 'M01-02:4' };
+  const changed = P.present(report('marriage', offTopic));
+  assert.equal(changed.axes.find(a => a.id === 'transparency').value,
+    original.axes.find(a => a.id === 'transparency').value);
+  assert.notEqual(changed.axes.find(a => a.id === 'commitment').value,
+    original.axes.find(a => a.id === 'commitment').value);
+  assert.ok(changed.risks.some(r => r.title === '重要信息的隐瞒'));
+  original.identity.rows.forEach(row => {
+    assert.equal(row.counterCount, original.axes.find(a => a.id === row.axis).coreRiskCount);
+  });
+  const d = D.newDraft('marriage'); d.answers = baseline.answers;
+  E.followups('marriage', d.answers).forEach(q => {
+    d.order.push(q.id); D.choose(d, q.id, D.items.get(q.id).options[3].id);
+  });
+  const later = P.present(D.snapshot(d));
+  assert.deepEqual(later.identity, original.identity);
+  assert.ok(later.risks.length > original.risks.length);
+});

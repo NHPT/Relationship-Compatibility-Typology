@@ -37,6 +37,19 @@ async function chartBounds(page) {
   assert.ok(geometry.every(g => g.inside), JSON.stringify(geometry));
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
 }
+async function colors(page, r) {
+  const p = P.present(r);
+  const rgb = hex => 'rgb(' + hex.slice(1).match(/../g).map(c => parseInt(c, 16)).join(', ') + ')';
+  assert.equal(await page.locator('#page-depth-report').evaluate(e => e.style.getPropertyValue('--green')), p.identity.color);
+  const actual = await page.locator('.profile-highlight > span').evaluateAll(nodes => nodes.map(n => getComputedStyle(n).color));
+  if (p.identity.selected.length) assert.deepEqual(actual, p.identity.selected.map(t => rgb(t.color)));
+  const title = await page.locator('.profile-name-part').evaluateAll(nodes => nodes.map(n => getComputedStyle(n).color));
+  if (p.identity.selected.length > 1) assert.deepEqual(title, p.identity.selected.map(t => rgb(t.color)));
+  for (const [id, t] of Object.entries(p.identity.catalog)) {
+    const entry = page.locator(`[data-affinity-type="${id}"] .affinity-symbol`);
+    if (await entry.count()) assert.equal(await entry.evaluate(e => getComputedStyle(e).color), rgb(t.color));
+  }
+}
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const facts = [], mixed = report('personal');
@@ -45,9 +58,11 @@ async function chartBounds(page) {
     const page = await context.newPage(), errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(base);
+    assert.equal(await page.locator('[data-library-type^="T"]').count(), 14);
+    assert.equal(await page.locator('[data-library-type^="R"]').count(), 8);
     for (const sample of fixtures.samples) {
       const r = report('personal', sample.answers), type = I.personal[sample.target];
-      await display(page, r); await privacy(page); await chartBounds(page);
+      await display(page, r); await privacy(page); await chartBounds(page); await colors(page, r);
       assert.equal(await page.locator('.profile-intro h2').textContent(), type.name + '型');
       assert.equal(await page.locator('.profile-emblem svg').getAttribute('aria-label'), type.animal + '象征图案');
       assert.equal(await page.locator('.profile-dimension').count(), 8);
@@ -68,6 +83,7 @@ async function chartBounds(page) {
     await page.locator('[data-report-index="0"]').click();
     assert.equal(await page.locator('.profile-intro h2').textContent(), P.present(mixed).narrative.title);
     assert.equal(await page.locator('.profile-emblem svg').count(), 2);
+    await colors(page, mixed);
     await privacy(page); await chartBounds(page);
     assert.ok(!(await page.locator('#depth-report').textContent()).includes('历史注记'));
     assert.equal(await page.evaluate(() => localStorage.getItem('rct_human_depth_v1_reports')), savedBytes);
@@ -122,8 +138,9 @@ async function chartBounds(page) {
     await display(page, report('marriage', { 'M05-02': 'M05-02:4', 'M08-02': 'M08-02:4' }));
     await privacy(page); await chartBounds(page);
     assert.equal(await page.locator('.profile-domains .topic-row').count(), 12);
-    assert.ok((await page.locator('.profile-radar').textContent()).includes('共同财务'));
-    await display(page, report('marriage'));
+    assert.ok((await page.locator('.profile-radar').textContent()).includes('财务协商'));
+    const marriage = report('marriage');
+    await display(page, marriage); await colors(page, marriage);
     assert.equal(await page.locator('[role="tab"]').count(), 3);
     assert.equal(await page.locator('.affinity-entry').count(), 8);
     await page.locator('.profile-domains > summary').click();
@@ -137,7 +154,7 @@ async function chartBounds(page) {
     for (const width of [375, 320]) {
       const phoneContext = await browser.newContext({ viewport: { width, height: 830 }, isMobile: true, hasTouch: true, reducedMotion: 'reduce' });
       const phone = await phoneContext.newPage(); await phone.goto(base);
-      await display(phone, mixed); await privacy(phone); await chartBounds(phone);
+      await display(phone, mixed); await privacy(phone); await chartBounds(phone); await colors(phone, mixed);
       await phone.screenshot({ path: path.join(output, `profile-mobile-${width}.png`) });
       await phone.locator('.profile-radar-section').scrollIntoViewIfNeeded();
       await phone.screenshot({ path: path.join(output, `profile-mobile-${width}-radar.png`) });
@@ -147,11 +164,11 @@ async function chartBounds(page) {
       assert.equal(await phone.locator('#affinity-panel-complement').isVisible(), true);
       await chartBounds(phone);
       await display(phone, report('marriage'));
-      await chartBounds(phone);
+      await chartBounds(phone); await colors(phone, report('marriage'));
       await phone.screenshot({ path: path.join(output, `profile-mobile-${width}-marriage.png`), fullPage: true });
       const blank = D.newDraft('marriage');
       blank.order.forEach(id => D.choose(blank, id, 'skipped'));
-      await display(phone, D.snapshot(blank)); await chartBounds(phone);
+      await display(phone, D.snapshot(blank)); await chartBounds(phone); await colors(phone, D.snapshot(blank));
       assert.equal(await phone.locator('.profile-radar-area').count(), 0);
       assert.equal(await phone.locator('.profile-radar-dot.unknown').count(), 8);
       assert.equal(await phone.locator('.dimension-level.unknown').count(), 8);
