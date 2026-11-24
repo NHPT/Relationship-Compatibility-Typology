@@ -41,7 +41,7 @@ function initHome() {
       <span class="mode-icon">${icon('leaf')}</span>
       <span class="mode-title">个人测评</span>
       <span class="mode-desc">8 种生活取向、特征与情境选择</span>
-      <span class="mode-count">48 项主题 · 255 题 · 分组完成 <span aria-hidden="true">↗</span></span>
+      <span class="mode-count">44 题 · 自动续答 <span aria-hidden="true">↗</span></span>
     </button>
   ` + [SCENARIOS.love].map(scene => `
     <button type="button" class="mode-card" data-scene="${scene.id}" style="--scene-color:${scene.accent}">

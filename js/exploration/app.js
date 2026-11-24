@@ -1,14 +1,15 @@
 const explorationState = {
   draft: null, groupId: null, questions: [], current: 0, pending: null,
-  storageOK: true, report: null
+  storageOK: true, report: null, reviewing: false
 };
 
 function initExploration() {
   explorationState.draft = readExplorationDraft();
   el('btn-exploration').addEventListener('click', openExploration);
   document.querySelectorAll('[data-ex-hub]').forEach(button => {
-    button.addEventListener('click', openExploration);
+    button.addEventListener('click', openExplorationHub);
   });
+  el('ex-start').addEventListener('click', () => startExploration());
   el('ex-prev').addEventListener('click', explorationPrevious);
   el('ex-next').addEventListener('click', explorationNext);
   el('ex-skip').addEventListener('click', explorationSkip);
@@ -34,6 +35,12 @@ function initExploration() {
 }
 
 function openExploration() {
+  if (explorationState.draft.incompatible) return openExplorationHub();
+  if (explorationProgress(null, explorationState.draft).complete) return finishExploration(null);
+  startExploration();
+}
+
+function openExplorationHub() {
   renderExplorationHub();
   show('exploration');
 }
@@ -41,30 +48,16 @@ function openExploration() {
 function renderExplorationHub() {
   el('ex-type-library').innerHTML = renderPersonalTypeLibrary(PERSONAL_TYPES);
   const draft = explorationState.draft;
-  const progress = EXPLORATION_GROUPS.map(group => explorationProgress(group.id, draft));
-  const answered = progress.reduce((n, row) => n + row.answered, 0);
-  const skipped = progress.reduce((n, row) => n + row.skipped, 0);
-  el('ex-total').textContent = `48 项主题 · 255 题 · 已答 ${answered} 题${skipped ? ` · 跳过 ${skipped} 题` : ''}`;
+  const progress = explorationProgress(null, draft);
+  el('ex-total').textContent = `共 ${progress.total} 题 · 已答 ${progress.answered} 题${progress.skipped ? ` · 跳过 ${progress.skipped} 题` : ''}`;
   el('ex-hub-storage').textContent = draft.incompatible
     ? '检测到旧版探索草稿。请先导出再清空，之后才能开始新版题库。'
     : !explorationState.storageOK ? '当前浏览器无法保存记录。页面刷新会丢失未保存回答，请先导出。'
     : draft.migratedFrom
-      ? `原有回答已保留。新增主型题已答 ${PERSONAL_PROBES.filter(probe => draft.answers[probe.questionId]?.optionId).length} / 12 题，可从各组继续完成。`
+      ? `旧版回答已保留。本次只需继续完成 44 题中的未答内容；新的一般交往情境不会代填。`
       : '选项点击后自动保存到当前浏览器，可随时回来续答。';
-  el('ex-groups').innerHTML = EXPLORATION_GROUPS.map((group, index) => {
-    const p = progress[index];
-    return `<article class="ex-group" style="--scene-color:${group.color}">
-      <div class="ex-group-head"><h3>${esc(group.name)}</h3><span>${p.total} 题</span></div>
-      <p class="muted">${group.topics.map(id => esc(EXPLORATION_TOPICS.find(t => t.id === id).name)).join(' · ')}</p>
-      <div class="ex-group-bottom"><span class="muted">已答 ${p.answered} / ${p.total}${p.skipped ? ` · 跳过 ${p.skipped}` : ''}</span>
-        <button type="button" class="btn btn-ghost" data-ex-group="${group.id}" ${draft.incompatible ? 'disabled' : ''}>
-          ${p.complete ? '回看与修改' : p.processed ? '继续答题' : '开始这组'}
-        </button></div>
-    </article>`;
-  }).join('');
-  el('ex-groups').querySelectorAll('[data-ex-group]').forEach(button => {
-    button.addEventListener('click', () => startExploration(button.dataset.exGroup));
-  });
+  el('ex-start').textContent = progress.complete ? '回看与修改回答' : progress.processed ? '继续个人测评' : '开始个人测评';
+  el('ex-start').disabled = Boolean(draft.incompatible);
   el('ex-overview').disabled = Boolean(draft.incompatible);
   const reports = getExplorationReports().slice().reverse();
   el('ex-snapshots').innerHTML = reports.length
@@ -72,7 +65,7 @@ function renderExplorationHub() {
         <span class="h-type">${esc(report.personalProfile?.title || report.title || '探索报告')}</span>
         <span class="h-time">${esc(new Date(report.timestamp).toLocaleString('zh-CN'))} · 已答 ${Number(report.answered) || 0} 题${report.version !== EXPLORATION_VERSION ? ' · 旧版' : ''}</span>
       </div><button type="button" class="btn btn-ghost" data-ex-snapshot="${index}">查看</button></div>`).join('')
-    : '<p class="muted">完成一组后会保存报告，也可以随时查看并保存当前总览。</p>';
+    : '<p class="muted">完成测评后保存报告，也可以随时查看并保存当前画像。</p>';
   el('ex-snapshots').querySelectorAll('[data-ex-snapshot]').forEach(button => {
     button.addEventListener('click', () => {
       renderExplorationReport(reports[Number(button.dataset.exSnapshot)], true, true);
@@ -81,25 +74,24 @@ function renderExplorationHub() {
   });
 }
 
-function startExploration(groupId, questionId = null) {
-  if (explorationState.draft.incompatible) return openExploration();
-  const group = getExplorationGroup(groupId);
-  explorationState.groupId = groupId;
-  explorationState.questions = explorationQuestions(groupId).map(q => ({ ...q, options: shuffle(q.options) }));
+function startExploration(questionId = null) {
+  if (explorationState.draft.incompatible) return openExplorationHub();
+  explorationState.groupId = null;
+  explorationState.questions = PERSONAL_CORE_QUESTIONS.map(q => ({ ...q, options: shuffle(q.options) }));
   const requested = questionId ? explorationState.questions.findIndex(q => q.id === questionId) : -1;
   const nextUnanswered = explorationState.questions.findIndex(q => explorationAnswer(q, explorationState.draft).status === 'unanswered');
   explorationState.current = requested >= 0 ? requested : Math.max(0, nextUnanswered);
-  el('ex-quiz-group').textContent = group.name;
+  explorationState.reviewing = requested >= 0 || nextUnanswered < 0;
+  el('ex-quiz-group').textContent = '个人测评';
   show('exploration-quiz');
   renderExplorationQuestion();
 }
 
 function renderExplorationQuestion() {
   const q = explorationState.questions[explorationState.current];
-  const topic = EXPLORATION_TOPICS.find(t => t.id === q.topicId);
   const answer = explorationAnswer(q, explorationState.draft);
   explorationState.pending = answer.status === 'answered' ? answer.optionId : null;
-  el('ex-topic').textContent = `${topic.id}. ${topic.name} · ${q.facet}`;
+  el('ex-topic').textContent = q.facet;
   el('ex-quiz-progress').textContent = `第 ${explorationState.current + 1} / ${explorationState.questions.length} 题`;
   el('ex-progress-bar').style.width = `${explorationState.current / explorationState.questions.length * 100}%`;
   el('ex-text').textContent = q.text;
@@ -131,7 +123,7 @@ function renderExplorationQuestion() {
     box.append(button);
   });
   el('ex-prev').disabled = explorationState.current === 0;
-  el('ex-next').textContent = explorationState.current === explorationState.questions.length - 1 ? '查看这组结果' : '下一题';
+  el('ex-next').textContent = explorationState.current === explorationState.questions.length - 1 ? '查看个人报告' : '下一题';
   updateExplorationSelection();
   el('ex-text').focus({ preventScroll: true });
 }
@@ -146,7 +138,7 @@ function updateExplorationSelection() {
   el('ex-next').disabled = explorationState.pending === null;
   el('ex-quiz-storage').textContent = explorationState.storageOK
     ? '回答自动保存在当前浏览器'
-    : '保存失败，回答暂留在本页。请返回主题页导出，刷新前务必保存。';
+    : '保存失败，回答暂留在本页。请返回个人记录页导出，刷新前务必保存。';
 }
 
 function explorationNext() {
@@ -161,10 +153,13 @@ function explorationSkip() {
 }
 
 function advanceExploration() {
-  if (explorationState.current === explorationState.questions.length - 1) {
-    finishExploration(explorationState.groupId);
+  const next = explorationState.reviewing ? explorationState.current + 1
+    : explorationState.questions.findIndex((q, index) => index > explorationState.current
+      && explorationAnswer(q, explorationState.draft).status === 'unanswered');
+  if (next < 0 || next >= explorationState.questions.length) {
+    finishExploration(null);
   } else {
-    explorationState.current++;
+    explorationState.current = next;
     renderExplorationQuestion();
     window.scrollTo({ top: 0 });
   }
@@ -172,6 +167,7 @@ function advanceExploration() {
 
 function explorationPrevious() {
   if (explorationState.current === 0) return;
+  explorationState.reviewing = true;
   explorationState.current--;
   renderExplorationQuestion();
   window.scrollTo({ top: 0 });
@@ -187,7 +183,7 @@ function finishExploration(groupId) {
 function renderExplorationReport(report, saved, snapshot = false) {
   explorationState.report = report;
   el('ex-report-title').textContent = report.title;
-  el('ex-report-meta').textContent = `${snapshot ? '历史报告 · ' : ''}${report.topicCount} 项主题 · 已答 ${report.answered} / ${report.total} 题 · 跳过 ${report.skipped} 题 · 未答 ${report.total - report.answered - report.skipped} 题`;
+  el('ex-report-meta').textContent = `${snapshot ? '历史报告 · ' : ''}已答 ${report.answered} / ${report.total} 题 · 跳过 ${report.skipped} 题 · 未答 ${report.total - report.answered - report.skipped} 题`;
   el('ex-report-storage').textContent = saved && explorationState.storageOK
     ? (snapshot ? '正在查看当时保存的回答；修改会进入当前草稿。' : '报告已保存在当前浏览器，可导出后留存或比较。')
     : '部分记录未能保存。当前报告仍可导出；请在刷新或关闭前保存。';
@@ -212,15 +208,15 @@ function renderExplorationReport(report, saved, snapshot = false) {
   }).join('');
   el('ex-report-topics').querySelectorAll('[data-ex-edit]').forEach(button => {
     button.addEventListener('click', () => {
-      const topic = EXPLORATION_TOPICS.find(t => t.id === Number(button.dataset.exEdit));
-      startExploration(topic.groupId, EXPLORATION_BANK[topic.id][0].id);
+      const topic = report.topics.find(t => t.topicId === Number(button.dataset.exEdit));
+      startExploration(topic.facets[0].questionId);
     });
   });
 }
 
 function renderPersonalProfile(report) {
   const profile = report.personalProfile;
-  const usable = isCurrentPersonalProfile(profile);
+  const usable = isCurrentPersonalProfile(profile, true);
   if (!usable) {
     el('ex-profile').innerHTML = (typeof profile?.title === 'string'
       ? `<div class="personal-summary"><p class="entry-label">历史画像 · 原规则</p><h2>${esc(profile.title)}</h2>
@@ -283,7 +279,7 @@ function renderPersonalProfile(report) {
     <details class="explanation-rules"><summary>画像的解释规则</summary>
       <p>每条特征观察四个指定情境。至少三题采用相应做法，才归纳为重复特征；四题中两题采用时保留为情境差异。未答、跳过或未知选项不作支持证据。</p>
       <p>${esc(profile.taxonomy.rule)}</p>
-      <p>主型与特征分别解释；具体信念、需要和婚育意愿单独保留。动物是识别符号，不参与计分，也不用于推断动物对应的人格。这里没有人群排名、忠诚度、心理诊断或未来行为概率。</p>
+      <p>12 道生活取向题与 32 道日常特征题分别解释；性生活、婚育和伴侣专项不在本次个人测评中。动物是识别符号，不参与计分。这里没有人群排名、忠诚度、心理诊断或未来行为概率。</p>
       <p>本版完成了类型命名与规则检查；人群效度及关系结果预测尚无统计验证。历史报告保留当时的解释版本，修改草稿后会生成新报告。</p>
     </details>`;
   const context = el('ex-profile-context');

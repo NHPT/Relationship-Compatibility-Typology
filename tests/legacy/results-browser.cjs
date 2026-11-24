@@ -1,8 +1,8 @@
-/* 使用明确标记的程序测试输入，不作为真人研究样本。 */
+/* 历史结果页面回归；仅配合旧版本页面使用。输入不是真人样本。 */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { chromium } = require('../.git/rct-ui/node_modules/playwright');
+const { chromium } = require('../../.git/rct-ui/node_modules/playwright');
 const base = process.env.RCT_URL || 'http://localhost:8090/';
 const output = path.resolve(process.env.RCT_ARTIFACT_DIR || '.git/rct-validation/results');
 fs.mkdirSync(output, { recursive: true });
@@ -24,6 +24,7 @@ fs.mkdirSync(output, { recursive: true });
       assert.deepEqual(await page.locator('#scene-entries .mode-title').allTextContents(), ['个人测评', '婚恋测评']);
       await page.screenshot({ path: path.join(output, `${width}-home.png`), fullPage: true });
       await page.locator('#btn-exploration').click();
+      await page.locator('#page-exploration-quiz [data-ex-hub]').click();
       await page.locator('#page-exploration .personal-library > summary').click();
       assert.equal(await page.locator('#ex-type-library .personal-type-item').count(), 8);
       assert.ok((await page.locator('#ex-type-library').textContent()).includes('逐光共创型'));
@@ -34,14 +35,13 @@ fs.mkdirSync(output, { recursive: true });
       // 初始化固定的题库选项 ID；页面结果必须通过真实按钮生成。
       await page.evaluate(() => {
         const draft = emptyExplorationDraft();
-        Object.values(EXPLORATION_BANK).flat().forEach(q => {
+        PERSONAL_CORE_QUESTIONS.forEach(q => {
           draft.answers[q.id] = { optionId: q.options[0].id, skipped: false };
         });
         localStorage.setItem(EX_DRAFT_KEY, JSON.stringify(draft));
       });
       await page.reload();
       await page.locator('#btn-exploration').click();
-      await page.locator('#ex-overview').click();
       const generated = await page.evaluate(() => ({
         answered: explorationState.report.answered,
         features: explorationState.report.personalProfile.repeated.length,
@@ -50,7 +50,7 @@ fs.mkdirSync(output, { recursive: true });
         evidence: explorationState.report.personalProfile.references[0].evidence,
         overflow: document.documentElement.scrollWidth > innerWidth
       }));
-      assert.equal(generated.answered, 255);
+      assert.equal(generated.answered, 44);
       assert.equal(generated.features, 8);
       assert.equal(generated.references, generated.primary.length);
       assert.ok(generated.primary.some(row => row.name === '筑基自航型'));
@@ -84,7 +84,7 @@ fs.mkdirSync(output, { recursive: true });
       await page.locator('#page-exploration-quiz [data-ex-hub]').click();
       await page.locator('#ex-overview').click();
       assert.equal(await page.evaluate(() => explorationState.report.personalProfile.repeated.find(row => row.id === 'evidence').supporting.length), 3);
-      assert.equal(await page.evaluate(() => getExplorationReports().find(report => report.answered === 255).personalProfile.repeated.find(row => row.id === 'evidence').supporting.length), 4);
+      assert.equal(await page.evaluate(() => getExplorationReports().find(report => report.answered === 44).personalProfile.repeated.find(row => row.id === 'evidence').supporting.length), 4);
       assert.deepEqual(errors, []);
       facts.push({ width, ...generated, changedEvidence: 3, snapshotEvidence: 4, pageErrors: errors });
       await context.close();

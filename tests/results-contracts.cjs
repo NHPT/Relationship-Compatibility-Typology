@@ -16,12 +16,12 @@ function load() {
   });
   const files = ['questionBank', 'banks/love', 'scoring', 'report', 'exploration/catalog',
     ...['needs', 'bonds', 'self', 'meaning', 'ethics', 'choices', 'society', 'growth', 'main'].map(id => `exploration/banks/${id}`),
-    'exploration/types', 'exploration/profile', 'exploration/model'];
+    'exploration/core', 'exploration/types', 'exploration/profile', 'exploration/model'];
   files.forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, '../js', file + '.js'), 'utf8'), context));
   vm.runInContext(`
     function fill(index = 0) {
       const draft = emptyExplorationDraft();
-      Object.values(EXPLORATION_BANK).flat().forEach(q => {
+      ALL_EXPLORATION_QUESTIONS.forEach(q => {
         draft.answers[q.id] = { optionId: q.options[index].id, skipped: false };
       });
       return draft;
@@ -118,18 +118,39 @@ test('已知 v1 草稿保留有效的 243 题回答与跳过，新题不补答�
     localStorage.setItem(EX_DRAFT_KEY,JSON.stringify(old));`);
   const original = env.values.get('rct_exploration_draft_v1');
   const report = env.run('buildExplorationReport(readExplorationDraft())');
-  assert.equal(report.total, 255);
-  assert.equal(report.answered, 242);
-  assert.equal(report.skipped, 1);
+  assert.equal(report.total, 44);
+  assert.equal(report.answered, 29);
+  assert.equal(report.skipped, 0);
+  assert.equal(env.run('Object.keys(readExplorationDraft().answers).length'),243);
+  assert.equal(env.run("readExplorationDraft().answers['ex-1-2'].skipped"),true);
   assert.equal(report.personalProfile.classificationStatus, 'incomplete');
   assert.equal(env.values.get('rct_exploration_draft_v1'), original);
-  assert.equal(env.run('readExplorationDraft().version'), 'rct-exploration-2026-11-23-v2');
+  assert.equal(env.run('readExplorationDraft().version'), 'rct-exploration-2026-11-23-v3');
   env.run("recordExplorationChoice(globalThis.migrated=readExplorationDraft(),PERSONAL_PROBES[0].questionId,PERSONAL_PROBES[0].questionId+':0')");
-  assert.equal(env.run('buildExplorationReport(readExplorationDraft()).answered'), 243);
+  assert.equal(env.run('buildExplorationReport(readExplorationDraft()).answered'), 30);
   env.values.set('rct_exploration_draft_v1', JSON.stringify({version:'future',answers:{}}));
   assert.equal(env.run('readExplorationDraft().incompatible'), true);
   assert.equal(env.run('saveExplorationDraft(readExplorationDraft())'), false);
   assert.equal(env.run('getExplorationData().draft.version'), 'future');
+});
+test('v2 草稿保留 255 题，新个人测评只续答未答内容，历史 v3 解释按原快照展示', () => {
+  const env=load();
+  env.run(`globalThis.previous=fill();
+    previous.version='rct-exploration-2026-11-23-v2';
+    localStorage.setItem(EX_DRAFT_KEY,JSON.stringify(previous));`);
+  const draft=env.run('readExplorationDraft()');
+  assert.equal(Object.keys(draft.answers).length,255);
+  assert.equal(env.run('explorationProgress(null,readExplorationDraft()).answered'),41);
+  assert.equal(env.run('buildExplorationReport(readExplorationDraft()).total'),44);
+  assert.ok(env.run('PERSONAL_CORE_ADDITIONS.every(q=>!readExplorationDraft().answers[q.id])'));
+  env.run(`globalThis.snapshot=buildExplorationReport(fill());
+    snapshot.version='rct-exploration-2026-11-23-v2';
+    snapshot.personalProfile.version='rct-personal-explanation-v3';
+    saveExplorationReport(snapshot);`);
+  const before=env.values.get('rct_exploration_reports_v1');
+  assert.equal(env.run('isCurrentPersonalProfile(getExplorationReports()[0].personalProfile)'),false);
+  assert.equal(env.run('isCurrentPersonalProfile(getExplorationReports()[0].personalProfile,true)'),true);
+  assert.equal(env.values.get('rct_exploration_reports_v1'),before);
 });
 
 test('十六婚恋模式与所有 81 方向组合可区分；参考逐轴一致', () => {
@@ -184,7 +205,8 @@ test('婚恋独立生成，个人基础来自当前草稿并随报告保存，�
   assert.equal(current.personalFoundation.profile.primaryTypes[0].id, 'P08');
   assert.equal(saved.type, current.type);
   assert.equal(saved.personalFoundation.source, 'current_personal_draft');
-  assert.equal(saved.personalFoundation.explanationVersion, 'rct-personal-explanation-v3');
+  assert.equal(saved.personalFoundation.explanationVersion, 'rct-personal-explanation-v4');
+  assert.equal(saved.personalFoundation.total,44);
   assert.equal(saved.personalFoundation.profile.taxonomy.axes[0].answers[0].text,
     env.run('buildExplorationReport(fill()).personalProfile.taxonomy.axes[0].answers[0].text'));
 });
@@ -208,7 +230,7 @@ test('题面、选项和分数均由题库重取，旧解释与旧类型快照�
   assert.equal(reports.length, 2);
   assert.equal(reports[0].personalProfile.title, '理性求证型');
   assert.equal(reports[0].personalProfile.version, 'rct-personal-explanation-v2');
-  assert.equal(reports[1].personalProfile.version, 'rct-personal-explanation-v3');
+  assert.equal(reports[1].personalProfile.version, 'rct-personal-explanation-v4');
   assert.equal(env.run('isCurrentPersonalProfile(old.personalProfile)'), false);
   const romance = env.run(`(() => {
     const answers=SCENE_BANKS.love.map(q=>({questionId:q.id,optionId:q.options[0].id,questionText:'伪造',optionText:'伪造',score:999}));

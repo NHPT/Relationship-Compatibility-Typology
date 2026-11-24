@@ -9,11 +9,13 @@ function readExplorationDraft() {
     const raw = JSON.parse(localStorage.getItem(EX_DRAFT_KEY));
     if (!raw) return emptyExplorationDraft();
     const legacy = raw.version === 'rct-exploration-2026-11-23-v1';
-    if (raw.version !== EXPLORATION_VERSION && !legacy) return { ...emptyExplorationDraft(), incompatible: true };
+    const previous = legacy || raw.version === 'rct-exploration-2026-11-23-v2';
+    if (raw.version !== EXPLORATION_VERSION && !previous) return { ...emptyExplorationDraft(), incompatible: true };
     if (!raw.answers || typeof raw.answers !== 'object' || Array.isArray(raw.answers)) return emptyExplorationDraft();
     const answers = {};
-    Object.values(EXPLORATION_BANK).flat().forEach(question => {
+    ALL_EXPLORATION_QUESTIONS.forEach(question => {
       if (legacy && PERSONAL_PROBES.some(probe => probe.questionId === question.id)) return;
+      if (previous && PERSONAL_CORE_ADDITIONS.some(q => q.id === question.id)) return;
       const answer = raw.answers[question.id];
       if (answer && (answer.skipped === true && answer.optionId === null
         || answer.skipped !== true && question.options.some(option => option.id === answer.optionId))) {
@@ -21,7 +23,7 @@ function readExplorationDraft() {
       }
     });
     return { version: EXPLORATION_VERSION, updatedAt: raw.updatedAt, answers,
-      ...(legacy ? { migratedFrom: raw.version } : {}) };
+      ...(previous ? { migratedFrom: raw.version } : {}) };
   } catch {
     return emptyExplorationDraft();
   }
@@ -39,7 +41,7 @@ function explorationAnswer(question, draft) {
     : { status: 'unanswered', text: '尚未作答' };
 }
 function recordExplorationChoice(draft, questionId, optionId, skipped = false) {
-  const question = Object.values(EXPLORATION_BANK).flat().find(q => q.id === questionId);
+  const question = getExplorationQuestion(questionId);
   if (!question || (skipped ? optionId !== null : !question.options.some(option => option.id === optionId))) {
     throw new Error('探索答案与题库不一致');
   }
@@ -49,19 +51,19 @@ function recordExplorationChoice(draft, questionId, optionId, skipped = false) {
   return saveExplorationDraft(draft);
 }
 function explorationProgress(groupId, draft) {
-  const questions = explorationQuestions(groupId);
+  const questions = groupId ? explorationQuestions(groupId) : PERSONAL_CORE_QUESTIONS;
   const statuses = questions.map(q => explorationAnswer(q, draft).status);
   const answered = statuses.filter(status => status === 'answered').length;
   const skipped = statuses.filter(status => status === 'skipped').length;
   return { total: questions.length, answered, skipped, processed: answered + skipped, complete: answered + skipped === questions.length };
 }
 function buildExplorationReport(draft, groupId = null) {
-  const topics = groupId
-    ? getExplorationGroup(groupId).topics.map(id => EXPLORATION_TOPICS.find(topic => topic.id === id))
-    : EXPLORATION_TOPICS;
+  const questions = groupId ? explorationQuestions(groupId) : PERSONAL_CORE_QUESTIONS;
+  const topicIds = [...new Set(questions.map(q => q.topicId))];
+  const topics = topicIds.map(id => EXPLORATION_TOPICS.find(topic => topic.id === id));
   const rows = topics.map(topic => ({
     topicId: topic.id, name: topic.name, reflection: topic.reflection,
-    facets: EXPLORATION_BANK[topic.id].map(question => ({
+    facets: questions.filter(question => question.topicId === topic.id).map(question => ({
       questionId: question.id, facet: question.facet, questionText: question.text,
       mode: question.mode, ...explorationAnswer(question, draft)
     }))
@@ -71,7 +73,8 @@ function buildExplorationReport(draft, groupId = null) {
     version: EXPLORATION_VERSION,
     resultId: globalThis.crypto?.randomUUID?.() || `ex-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     timestamp: Date.now(), groupId,
-    title: groupId ? getExplorationGroup(groupId).name : '48 项自我探索总览',
+    title: groupId ? getExplorationGroup(groupId).name : '个人综合画像',
+    scope: groupId ? 'legacy_group' : 'personal_core',
     source: 'self_report', validated: false,
     answered: facets.filter(facet => facet.status === 'answered').length,
     skipped: facets.filter(facet => facet.status === 'skipped').length,

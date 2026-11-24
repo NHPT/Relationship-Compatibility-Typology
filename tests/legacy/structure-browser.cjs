@@ -1,8 +1,8 @@
-/* 固定选项标识的程序输入；实际报告均通过页面按钮生成。 */
+/* 历史结构页面回归；仅配合旧版本页面使用。输入不是真人样本。 */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { chromium } = require('../.git/rct-ui/node_modules/playwright');
+const { chromium } = require('../../.git/rct-ui/node_modules/playwright');
 const base = process.env.RCT_URL || 'http://localhost:8090/';
 const output = path.resolve(process.env.RCT_ARTIFACT_DIR || '.git/rct-validation/structure');
 fs.mkdirSync(output, { recursive: true });
@@ -19,7 +19,7 @@ async function exportReport(page, selector, filename) {
 async function setPersonal(page, index) {
   await page.evaluate(index => {
     const type = PERSONAL_TYPES[index], draft = emptyExplorationDraft();
-    Object.values(EXPLORATION_BANK).flat().forEach(q => draft.answers[q.id]={optionId:q.options[0].id,skipped:false});
+    PERSONAL_CORE_QUESTIONS.forEach(q => draft.answers[q.id]={optionId:q.options[0].id,skipped:false});
     PERSONAL_PROBES.forEach(probe => draft.answers[probe.questionId]={
       optionId:probe.questionId+':'+(type.profile[probe.axis]==='neg'?0:3),skipped:false
     });
@@ -65,7 +65,13 @@ async function completeRomance(page, index, mixed = false) {
         .forEach(q=>draft.answers[q.id]={optionId:q.options[0].id,skipped:false});
       const old=buildExplorationReport(draft);
       old.version='rct-exploration-2026-11-23-v1';
-      old.topics.forEach(topic=>topic.facets=topic.facets.filter(facet=>!PERSONAL_PROBES.some(probe=>probe.questionId===facet.questionId)));
+      old.topics=EXPLORATION_TOPICS.map(topic=>({
+        topicId:topic.id,name:topic.name,reflection:topic.reflection,
+        facets:EXPLORATION_BANK[topic.id].filter(q=>!PERSONAL_PROBES.some(probe=>probe.questionId===q.id))
+          .map(q=>({questionId:q.id,facet:q.facet,questionText:q.text,mode:q.mode,...explorationAnswer(q,draft)}))
+      }));
+      old.topicCount=48;
+      old.answered=243;
       old.total=243;
       old.personalProfile.version='rct-personal-explanation-v2';
       old.personalProfile.taxonomy.version='rct-personal-types-v1';
@@ -77,18 +83,19 @@ async function completeRomance(page, index, mixed = false) {
     });
     await page.reload();
     await page.locator('#btn-exploration').click();
-    assert.equal(await page.locator('[data-ex-group]:disabled').count(),0);
-    assert.ok((await page.locator('#ex-hub-storage').textContent()).includes('0 / 12'));
+    assert.equal(await page.locator('[data-ex-group]').count(),0);
+    await page.locator('#page-exploration-quiz [data-ex-hub]').click();
+    assert.ok((await page.locator('#ex-hub-storage').textContent()).includes('旧版回答已保留'));
     await page.locator('[data-ex-snapshot]').click();
     assert.ok((await page.locator('#ex-profile').textContent()).includes('理性求证型'));
     await page.locator('#page-exploration-result [data-ex-hub]').first().click();
     await page.locator('#ex-overview').click();
-    assert.equal(await page.evaluate(()=>explorationState.report.answered),243);
+    assert.equal(await page.evaluate(()=>explorationState.report.answered),29);
     assert.equal(await page.evaluate(()=>explorationState.report.personalProfile.primaryTypes.length),0);
     await page.locator('#page-exploration-result [data-ex-hub]').first().click();
-    await page.locator('[data-ex-group="needs"]').click();
-    assert.ok((await page.locator('#ex-topic').textContent()).includes('保障后的变化偏好'));
-    await page.locator('#ex-options [data-option-id="ex-1-6:0"]').click();
+    await page.locator('#ex-start').click();
+    const firstProbe=await page.evaluate(()=>PERSONAL_PROBES[0].questionId);
+    await page.locator(`#ex-options [data-option-id="${firstProbe}:0"]`).click();
     await page.reload();
     assert.equal(await page.evaluate(()=>Object.keys(readExplorationDraft().answers).length),244);
     assert.equal(await page.evaluate(()=>getExplorationReports()[0].personalProfile.title),'理性求证型');
@@ -98,7 +105,6 @@ async function completeRomance(page, index, mixed = false) {
     for (let index=0;index<8;index++) {
       await setPersonal(page,index);
       await page.locator('#btn-exploration').click();
-      await page.locator('#ex-overview').click();
       const expected=await page.evaluate(i=>PERSONAL_TYPES[i],index);
       assert.equal(await page.locator('#ex-profile .personal-summary h2').textContent(),expected.name);
       assert.equal(await page.locator('.personal-directions .feature-row').count(),3);

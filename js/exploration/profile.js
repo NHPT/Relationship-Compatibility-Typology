@@ -1,5 +1,5 @@
 /* 本版类型与特征分别解释，具体信念、意愿和情境回答保持独立。 */
-const PERSONAL_EXPLANATION_VERSION = 'rct-personal-explanation-v3';
+const PERSONAL_EXPLANATION_VERSION = 'rct-personal-explanation-v4';
 const PERSONAL_FEATURES = [
   {
     id: 'evidence', label: '先核对依据',
@@ -10,8 +10,8 @@ const PERSONAL_FEATURES = [
   },
   {
     id: 'autonomy', label: '保留自主边界',
-    items: [['ex-3-2', [0, 1]], ['ex-5-4', [0, 1]], ['ex-22-3', [0]], ['ex-22-5', [0]]],
-    summary: '在方法、独处、家庭决定和帮助范围中，你多次选择保留当事人的决定空间。',
+    items: [['ex-3-2', [0, 1]], ['pc-autonomy-2', [0, 1]], ['ex-22-3', [0]], ['ex-22-5', [0]]],
+    summary: '在方法、个人时间、家庭决定和帮助范围中，你多次选择保留当事人的决定空间。',
     benefit: '能把关心与代替别人决定分开讨论。',
     watch: '把可用时间和能提供的支持说明白，减少对方靠猜测理解距离。',
   },
@@ -52,7 +52,7 @@ const PERSONAL_FEATURES = [
   },
   {
     id: 'connection', label: '重视稳定联系',
-    items: [['ex-5-1', [0, 1]], ['ex-5-3', [0, 1]], ['ex-45-2', [0, 2]], ['ex-45-5', [0, 1]]],
+    items: [['pc-connection-1', [0, 1]], ['pc-connection-2', [0, 1]], ['ex-45-2', [0, 2]], ['ex-45-5', [0, 1]]],
     summary: '在表达在乎、陪伴和社交需要中，你多次选择交流或稳定支持。',
     benefit: '可以主动维持联系，让对方知道关系对你的意义。',
     watch: '分别确认联系频率和回复时限，不把暂时没空直接理解为不在乎。',
@@ -60,21 +60,21 @@ const PERSONAL_FEATURES = [
 ];
 
 const PERSONAL_SITUATIONS = [
-  ['利益与原则', 'ex-28-1', '核对实际收益、代价由谁承担，以及能否协商其他办法。'],
+  ['承诺与安排', 'ex-17-2', '核对自己的时间与能力，提前说明需要变更的安排。'],
   ['冲动与表达', 'ex-29-2', '回想最近一次类似经历，确认暂停或表达之后发生了什么。'],
-  ['群体压力', 'ex-38-2', '确认拒绝的代价和可替代活动，而不是把随群或拒绝当作能力结论。'],
+  ['权威与判断', 'ex-38-4', '核对观点背后的依据，而不是只根据提出者的身份决定。'],
   ['责任与失误', 'ex-37-2', '确认何时说明、如何补救，以及对受影响的人有什么影响。'],
-  ['背叛与信任', 'ex-23-4', '区分追责、修复和恢复信任，不要求立即原谅。'],
-  ['亲密与空间', 'ex-5-4', '具体说明独处时间和共同安排，确认双方是否接受。']
+  ['共同分工', 'ex-46-2', '确认各自负责的范围、沟通方式与实际投入。'],
+  ['个人时间与边界', 'pc-autonomy-2', '说明可用时间与帮助范围，商量可接受的安排。']
 ];
 
 function personalEvidence(report) {
   const evidence = new Map();
   report.topics.forEach(topic => topic.facets.forEach(facet => {
-    const question = EXPLORATION_BANK[topic.topicId]?.find(q => q.id === facet.questionId);
+    const question = getExplorationQuestion(facet.questionId);
     const option = question?.options.find(o => o.id === facet.optionId);
     // 未知选项、跳过与未答都不能当成支持证据。
-    if (facet.status === 'answered' && option) {
+    if (question?.topicId === topic.topicId && facet.status === 'answered' && option) {
       evidence.set(question.id, {
         questionId: question.id, topicId: topic.topicId, topicName: topic.name,
         questionText: question.text, optionId: option.id, text: option.text
@@ -90,7 +90,7 @@ function buildPersonalProfile(report) {
     const observed = rule.items.map(([id]) => evidence.get(id)).filter(Boolean);
     const supporting = observed.filter(row => {
       const allowed = rule.items.find(([id]) => id === row.questionId)[1];
-      const question = EXPLORATION_BANK[row.topicId].find(q => q.id === row.questionId);
+      const question = getExplorationQuestion(row.questionId);
       return allowed.some(index => question.options[index].id === row.optionId);
     });
     // 四个指定情境中的重复选择；不比较心理强度，不用缺失答案补分。
@@ -162,11 +162,12 @@ function buildPersonalProfile(report) {
   };
 }
 
-function isCurrentPersonalProfile(profile) {
+function isCurrentPersonalProfile(profile, allowSnapshot = false) {
   const textFields = (row, keys) => row && keys.every(key => typeof row[key] === 'string');
   const evidenceRows = rows => Array.isArray(rows) && rows.every(row =>
     textFields(row, ['questionId', 'questionText', 'optionId', 'text']));
-  return profile?.version === PERSONAL_EXPLANATION_VERSION
+  return (profile?.version === PERSONAL_EXPLANATION_VERSION
+      || allowSnapshot && profile?.version === 'rct-personal-explanation-v3')
     && profile.taxonomy?.version === PERSONAL_TYPE_VERSION
     && Array.isArray(profile.taxonomy.axes) && profile.taxonomy.axes.length === 3
     && profile.taxonomy.axes.every(axis => textFields(axis, ['key', 'name', 'text', 'direction'])

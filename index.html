@@ -3,230 +3,130 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="RCT：个人测评与婚恋测评。从48项主题的实际回答梳理个人特征，了解相处中的共同点、差异和具体约定。">
-  <title>RCT 关系适配类型学</title>
-  <link rel="stylesheet" href="css/style.css?v=20261123-structure-v2">
+  <meta name="description" content="RCT 人性与婚恋深度测评：48个人主题、14种描述原型、12个婚恋领域。查看具体选择、风险行动、相反证据与未观察内容。">
+  <title>RCT 人性与婚恋深度测评</title>
+  <link rel="stylesheet" href="css/style.css?v=20261124-depth-v1">
+  <link rel="stylesheet" href="css/depth.css?v=20261124-depth-v1">
 </head>
 <body>
-  <div class="app">
-
-    <!-- ============ 首页 ============ -->
+  <main class="app" id="depth-app" data-release="20261124-depth-v1">
     <section id="page-home" class="page active">
       <header class="hero">
-        <div class="brand">
-          <span class="logo">RCT</span>
-          <div class="brand-text">
-            <h1>关系适配类型学</h1>
-            <p class="sub">Relationship Compatibility Typology</p>
-          </div>
-        </div>
-        <p class="lead">认识自己的生活取向、具体选择与情境差异，也了解亲密关系中的相处方式。个人测评梳理基础画像，婚恋测评进一步确认关系模式、日常选择与具体期待。</p>
+        <div class="brand"><span class="logo">RCT</span><div class="brand-text">
+          <h1>人性与婚恋深度测评</h1><p class="sub">Relationship Compatibility Typology</p>
+        </div></div>
+        <p class="lead">利益变化时怎样守约，遇到困难时怎样担责，面对权力时怎样对待别人。通过具体选择，观察一个人的行为方式与条件。</p>
       </header>
-
       <p class="entry-label">选择本次测评</p>
-      <div class="mode-cards" id="scene-entries"></div>
-      <div class="home-history"><button type="button" id="btn-history" class="btn btn-ghost">查看婚恋历史<span id="history-count"></span></button><span class="muted">个人测评可分组续答 · 记录仅存当前浏览器</span></div>
-
-      <div class="home-foot">
-        <p class="muted">个人主型只概括三个生活取向，不代表完整人格。当前题库与相处参考仍待真人研究验证，不能直接判断另一人的倾向、关系结局或工作能力。记录仅存于当前浏览器。</p>
+      <div class="mode-cards">
+        <button type="button" class="mode-card" id="btn-exploration" data-start="personal" style="--scene-color:var(--green-strong)">
+          <span class="mode-kicker">48 主题 / 14 描述原型</span><span class="mode-title">个人深度测评</span>
+          <span class="mode-desc">守约、责任、利益、边界、创造与执行。支持证据与风险行动分别呈现。</span>
+          <span class="mode-count">96 题核心 · 自动续答 <span aria-hidden="true">↗</span></span>
+        </button>
+        <button type="button" class="mode-card" data-scene="love" data-start="marriage" style="--scene-color:var(--green-strong)">
+          <span class="mode-kicker">12 个婚恋领域</span><span class="mode-title">婚恋深度测评</span>
+          <span class="mode-desc">长期承诺、忠实约定、共同财务、照料分工与逆境中的选择。</span>
+          <span class="mode-count">48 题核心 · 成年自愿 <span aria-hidden="true">↗</span></span>
+        </button>
       </div>
-    </section>
-
-    <!-- ============ 答题页 ============ -->
-    <section id="page-quiz" class="page">
-      <div class="quiz-scene-line"><strong id="quiz-scene"></strong><button type="button" class="text-btn" data-home>返回首页</button></div>
-      <p id="quiz-context" class="quiz-context muted"></p>
-      <div class="quiz-top">
-        <div class="quiz-meta">
-          <span id="quiz-sub">选择自己通常采用的做法</span>
-          <span id="quiz-progress">第 1 / 44 题</span>
-        </div>
-        <div class="quiz-timer" id="quiz-timer">60s</div>
+      <div class="home-history">
+        <button type="button" class="btn btn-ghost" id="btn-history">报告与记录</button>
+        <button type="button" class="btn btn-ghost" id="btn-pair">双方婚恋对照</button>
       </div>
-      <div class="progress-track"><div id="quiz-progress-bar" class="progress-bar"></div></div>
-
-      <div class="quiz-body">
-        <h2 class="quiz-text" id="quiz-text" tabindex="-1"></h2>
-        <div class="options" id="quiz-options" role="group" aria-labelledby="quiz-text"></div>
-        <div class="quiz-actions"><button type="button" id="quiz-prev" class="btn btn-ghost" disabled>上一题</button><button type="button" id="quiz-next" class="btn" disabled>下一题</button></div>
-        <p class="quiz-hint muted">60 秒仅作阅读提示，不会自动选择或跳题。</p>
-      </div>
-    </section>
-
-    <!-- ============ 结果页 ============ -->
-    <section id="page-result" class="page">
-      <div class="result-card" id="result-card">
-        <p class="result-scene" id="result-scene"></p>
-        <div class="result-head">
-          <span class="result-symbol" id="result-symbol"></span>
-          <div>
-            <div class="result-code" id="result-code"></div>
-            <h2 id="result-type"></h2>
-            <p id="result-subtype" class="result-subtype"></p>
-            <p class="result-axes" id="result-axes"></p>
-          </div>
-        </div>
-
-        <p id="result-flex" class="profile-note hidden"></p>
-        <div id="result-warn" class="warn-banner hidden"></div>
-
-        <div class="result-grid">
-          <div class="kv"><span class="k">核心特征</span><span id="result-core"></span></div>
-          <div class="kv"><span class="k">行为线索</span><span id="result-strength"></span></div>
-          <div class="kv"><span class="k">场景重点</span><span id="result-risk"></span></div>
-        </div>
-        <div id="result-explanation"></div>
-
-        <div id="result-foundation"></div>
-        <h3 class="sec-title">婚恋模式 · 四条专项方向</h3>
-        <p class="dim-explainer muted">每轴三题，位置表示本次选择的合计方向。展开可看题目依据；两端不代表优劣或人群排名。</p>
-        <div id="result-dims" class="dims"></div>
-        <h3 class="sec-title">生活方式 · 独立保留</h3>
-        <p class="dim-explainer muted">生活节奏、陪伴和开支取向用于讨论日常安排，不参与婚恋模式分类。</p>
-        <div id="result-lifestyle"></div>
-
-        <h3 class="sec-title">行为观察 · 八项回答分布</h3>
-        <p class="dim-explainer muted">每项两题，按选项中主动说明、协商与跟进的行动计 0–6 分。图形只展示本次回答，不是能力评分或适配概率，面积没有综合意义。</p>
-        <div id="result-radar" class="radar"></div>
-        <div id="result-behaviors" class="behaviors"></div>
-
-        <h3 class="sec-title">具体意愿与约定 · 单独确认</h3>
-        <p class="dim-explainer muted">这些回答不计分、不被类型代替。实际适配需要与对方逐项确认。</p>
-        <div id="result-conditions" class="conditions"></div>
-        <div id="result-match" class="match-reco"></div>
-
-        <div id="result-stability" class="stability hidden"></div>
-
-        <div class="outcome-box">
-          <h3 class="sec-title">研究反馈（可选）</h3>
-          <p class="muted">可记录你与某人的实际相处情况。仅保存在当前浏览器，不会上传；导出后可供后续研究整理，保存反馈不会自动校准结果。</p>
-          <div class="outcome-form">
-            <label class="oc-field"><span>本次反馈场景</span>
-              <input id="oc-relation" readonly>
-            </label>
-            <label class="oc-field"><span>相处时长</span>
-              <select id="oc-duration">
-                <option value="" selected disabled>请选择相处时长</option>
-                <option value="short">&lt;6 个月</option>
-                <option value="mid">6 个月–2 年</option>
-                <option value="long">2 年以上</option>
-              </select>
-            </label>
-            <label class="oc-field"><span>关系状态</span>
-              <select id="oc-status">
-                <option value="" selected disabled>请选择实际状态</option>
-                <option value="good">稳定和谐</option>
-                <option value="ok">一般</option>
-                <option value="bad">矛盾较多</option>
-                <option value="ended">已结束</option>
-              </select>
-            </label>
-            <label class="oc-field"><span>对方在同一场景的自测风格（未知时留空）</span>
-              <select id="oc-partner"><option value="">不知道或尚未测试</option></select>
-            </label>
-            <button id="btn-save-outcome" class="btn btn-ghost">保存到本地</button>
-            <span id="oc-saved" class="muted hidden" role="status">已保存到当前浏览器 ✓</span>
-          </div>
-        </div>
-
-        <p id="result-storage" class="storage-note muted" role="status"></p>
-        <div class="actions">
-          <button id="btn-again" class="btn">再测一次</button>
-          <button id="btn-export-result" class="btn btn-ghost">导出本次画像</button>
-          <button class="btn btn-ghost" data-home>返回首页</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ 历史页 ============ -->
-    <section id="page-history" class="page">
-      <div class="result-card">
-        <h2 class="sec-title">历史记录</h2>
-        <label class="oc-field history-filter"><span>查看记录</span><select id="history-scene"><option value="all">全部记录</option><option value="love">婚恋测评</option><option value="legacy">其他旧版记录</option></select></label>
-        <div id="history-list"></div>
-        <div class="actions">
-          <button id="btn-export-json" class="btn btn-ghost">导出 JSON</button>
-          <button id="btn-export-csv" class="btn btn-ghost">导出 CSV</button>
-          <button class="btn" data-home>返回首页</button>
-        </div>
-      </div>
-    </section>
-
-    <section id="page-exploration" class="page">
-      <div class="quiz-scene-line"><strong>个人测评</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
-      <h2 class="ex-heading">从你在意的主题开始</h2>
-      <p class="ex-intro">每组包含 6 项主题，共 30–36 题，可分组续答。三个生活方向形成生活取向主型，不代表完整人格；48 项主题中的具体特征与情境选择分别解释。涉及亲密、信仰或生命的内容可以跳过。</p>
-      <p id="ex-total" class="ex-total"></p>
-      <p id="ex-hub-storage" class="storage-note muted" role="status"></p>
-      <div id="ex-groups" class="ex-groups"></div>
-      <details class="explanation-rules personal-library">
-        <summary>认识本版 8 种生活取向主型</summary>
-        <div id="ex-type-library"></div>
+      <p class="home-foot muted">核心答完即可看报告，再按需要自动补问。个人最多 144 题，婚恋最多 72 题；无需选择模块。只在当前浏览器保存，本人决定是否导出和分享。</p>
+      <details class="depth-library"><summary>14 类怎样形成，结果怎样使用</summary><div id="type-library"></div>
+        <p class="muted">类型是较细的描述摘要。覆盖不足、前列接近或存在反证时，不强行指定主型。没有类型也能查看全部证据。当前阈值未经过真人研究验证，不能给出背叛概率、终身忠诚保证或未来成就预测。</p>
       </details>
-      <div class="actions">
-        <button type="button" id="ex-overview" class="btn">查看个人综合画像</button>
-        <button type="button" id="ex-export-data" class="btn btn-ghost">导出探索记录</button>
-        <button type="button" id="ex-clear" class="btn btn-ghost">清空探索记录</button>
-      </div>
-      <h3 class="sec-title ex-history-title">已保存的个人报告</h3>
-      <div id="ex-snapshots"></div>
-      <p class="quiz-hint muted">这 48 项是内容主题，存在交叉。题库尚未经过真人效度研究，回答用于自我梳理，不用于判断人品或预测行为。记录仅存当前浏览器。</p>
+      <p id="home-status" class="storage-note muted" role="status"></p>
     </section>
-
-    <section id="page-exploration-quiz" class="page">
-      <div class="quiz-scene-line"><strong id="ex-quiz-group"></strong><button type="button" class="text-btn" data-ex-hub>返回主题页</button></div>
-      <p id="ex-quiz-hint" class="quiz-context muted"></p>
-      <div class="quiz-top"><span id="ex-topic" class="ex-topic-label"></span><span id="ex-quiz-progress" class="muted"></span></div>
-      <div class="progress-track"><div id="ex-progress-bar" class="progress-bar"></div></div>
+    <section id="page-consent" class="page">
+      <div class="quiz-scene-line"><strong>婚恋深度测评</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
+      <h2 class="depth-title">开始前，确认你的选择</h2>
+      <p>题目涉及共同生活、财务和亲密边界。没有伴侣也可回答情境题；没有相应经历时直接跳过，不需要猜测或披露私密细节。</p>
+      <div class="consent-fields">
+        <label><input type="checkbox" id="consent-adult">我已年满 18 周岁</label>
+        <label><input type="checkbox" id="consent-voluntary">我自愿进入婚恋测评，知道可以随时暂停或不愿回答</label>
+      </div>
+      <button type="button" id="consent-start" class="btn" disabled>进入婚恋测评</button>
+    </section>
+    <section id="page-depth-quiz" class="page">
+      <div class="quiz-scene-line"><strong id="depth-mode"></strong><button type="button" class="text-btn" id="depth-pause">保存并返回</button></div>
+      <p id="depth-instruction" class="quiz-context muted"></p>
+      <div class="quiz-top"><span id="depth-kind"></span><span id="depth-progress" class="muted"></span></div>
+      <div class="progress-track"><div id="depth-progress-bar" class="progress-bar"></div></div>
       <div class="quiz-body">
-        <h2 id="ex-text" class="quiz-text" tabindex="-1"></h2>
-        <div id="ex-options" class="options" role="group" aria-labelledby="ex-text"></div>
-        <div class="quiz-actions ex-quiz-actions">
-          <button type="button" id="ex-prev" class="btn btn-ghost">上一题</button>
-          <button type="button" id="ex-skip" class="btn btn-ghost">跳过本题</button>
-          <button type="button" id="ex-next" class="btn" disabled>下一题</button>
+        <h2 id="depth-text" class="quiz-text" tabindex="-1"></h2>
+        <p id="depth-followup-reason" class="muted"></p>
+        <div id="depth-options" class="options" role="group" aria-labelledby="depth-text"></div>
+        <div id="depth-missing" class="missing-options" role="group" aria-label="跳过原因"></div>
+        <details class="depth-note"><summary>补充具体经历（自愿，不加权）</summary>
+          <label class="oc-field"><span>发生日期</span><input type="date" id="note-date"></label>
+          <label class="oc-field"><span>当时条件</span><input type="text" id="note-context" maxlength="2000"></label>
+          <label class="oc-field"><span>具体例子</span><textarea id="note-example" maxlength="2000" rows="3"></textarea></label>
+        </details>
+        <div class="quiz-actions">
+          <button type="button" id="depth-prev" class="btn btn-ghost">上一题</button>
+          <button type="button" id="depth-next" class="btn" disabled>下一题</button>
         </div>
-        <p id="ex-quiz-storage" class="quiz-hint muted" role="status"></p>
+        <button type="button" id="depth-stop-followup" class="text-btn hidden">结束补问，查看已有证据</button>
+        <p id="depth-quiz-status" class="storage-note muted" role="status" aria-live="polite"></p>
       </div>
     </section>
-
-    <section id="page-exploration-result" class="page">
-      <div class="result-card">
-        <div class="quiz-scene-line"><strong>个人测评 · 本次画像</strong><button type="button" class="text-btn" data-ex-hub>返回主题页</button></div>
-        <h2 id="ex-report-title" class="ex-heading"></h2>
-        <p id="ex-report-meta" class="ex-total"></p>
-        <div id="ex-profile"></div>
-        <h3 class="sec-title report-section-title">逐项回答 · 完整依据</h3>
-        <p class="ex-intro">展开主题查看题目与实际选择，可用真实经历核对。跳过和未答保留原状态。</p>
-        <div id="ex-report-topics"></div>
-        <p id="ex-report-storage" class="storage-note muted" role="status"></p>
-        <div class="actions">
-          <button type="button" id="ex-export-report" class="btn">导出本次报告</button>
-          <button type="button" class="btn btn-ghost" data-ex-hub>继续其他主题</button>
-          <button type="button" class="btn btn-ghost" data-home>返回首页</button>
-        </div>
+    <section id="page-depth-report" class="page">
+      <div class="quiz-scene-line"><strong id="report-mode"></strong><button type="button" class="text-btn" data-home>返回首页</button></div>
+      <div id="depth-report"></div>
+      <p id="report-status" class="storage-note muted" role="status"></p>
+      <div class="actions">
+        <button type="button" id="report-followup" class="btn">自动补充观察</button>
+        <button type="button" id="report-edit" class="btn btn-ghost">回看与修改</button>
+        <button type="button" id="report-export" class="btn btn-ghost">导出本次报告</button>
+        <button type="button" id="report-new" class="btn btn-ghost">重新作答</button>
+      </div>
+      <p class="quiz-hint muted">修改会生成新报告，已保存的快照保留原状。</p>
+    </section>
+    <section id="page-depth-history" class="page">
+      <div class="quiz-scene-line"><strong>报告与记录</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
+      <p class="muted">新旧版本分别保存；旧 44 题与完整旧题库记录按原文查看，不能换算为新结果。</p>
+      <div id="depth-history"></div>
+      <h2 class="sec-title">导入本人主动提供的报告</h2>
+      <p class="muted">导入只在本地读取文件。双方对照需要两份同版本婚恋报告，类型名称不能替代实际作答。</p>
+      <label class="oc-field import-field"><span>选择 JSON 报告文件</span><input type="file" id="report-import" accept=".json,application/json"></label>
+      <p id="import-status" class="storage-note muted" role="status"></p>
+      <div class="actions">
+        <button type="button" id="history-export" class="btn btn-ghost">导出全部本地记录</button>
+        <button type="button" id="history-retry" class="btn btn-ghost">重新读取记录</button>
       </div>
     </section>
-  </div>
-
-  <script src="js/questionBank.js?v=20261123-structure-v2"></script>
-  <script src="js/banks/love.js?v=20261123-structure-v2"></script>
-  <script src="js/scoring.js?v=20261123-structure-v2"></script>
-  <script src="js/report.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/catalog.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/banks/needs.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/banks/bonds.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/banks/self.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/banks/meaning.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/banks/ethics.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/banks/choices.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/banks/society.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/banks/growth.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/banks/main.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/types.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/profile.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/model.js?v=20261123-structure-v2"></script>
-  <script src="js/app.js?v=20261123-structure-v2"></script>
-  <script src="js/exploration/app.js?v=20261123-structure-v2"></script>
+    <section id="page-depth-raw" class="page">
+      <div class="quiz-scene-line"><strong>原版本记录</strong><button type="button" class="text-btn" id="raw-back">返回记录</button></div>
+      <h2 id="raw-title" class="depth-title"></h2>
+      <p class="muted">保留原名称、解释、回答及版本，不用新算法重算。当前记录只能按原范围理解。</p>
+      <div id="raw-readable"></div>
+      <details class="depth-library"><summary>查看完整原始记录</summary><pre id="raw-content"></pre></details>
+      <button type="button" class="btn btn-ghost" id="raw-export">导出原记录</button>
+    </section>
+    <section id="page-depth-pair" class="page">
+      <div class="quiz-scene-line"><strong>双方婚恋对照</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
+      <h2 class="depth-title">先看实际回答，再谈共同约定</h2>
+      <p class="muted">由两人主动提供各自的报告。A、B 是本次代号；同型不等于合适，异型不等于不合适。未确认的共同约定不能算一致。</p>
+      <div class="pair-selectors">
+        <label class="oc-field"><span>A 的婚恋报告</span><select id="pair-a"></select></label>
+        <label class="oc-field"><span>B 的婚恋报告</span><select id="pair-b"></select></label>
+      </div>
+      <div class="actions"><button type="button" id="pair-load" class="btn">读取两份报告</button><button type="button" id="pair-import" class="btn btn-ghost">导入报告</button></div>
+      <p id="pair-status" class="storage-note muted" role="status"></p>
+      <div id="pair-content"></div>
+      <div id="pair-actions" class="actions hidden">
+        <button type="button" id="pair-save" class="btn">保存本次对照快照</button>
+        <button type="button" id="pair-export" class="btn btn-ghost">导出本次对照</button>
+      </div>
+    </section>
+    <noscript>本测评需要开启 JavaScript 才能在本地处理回答。</noscript>
+  </main>
+  <script src="js/depth/model.js?v=20261124-depth-v1"></script>
+  <script src="js/depth/engine.js?v=20261124-depth-v1"></script>
+  <script src="js/depth/data.js?v=20261124-depth-v1"></script>
+  <script src="js/depth/app.js?v=20261124-depth-v1"></script>
 </body>
 </html>

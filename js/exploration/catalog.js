@@ -1,5 +1,5 @@
 /* 48 个内容主题，不假定它们是彼此独立的心理量表。 */
-const EXPLORATION_VERSION = 'rct-exploration-2026-11-23-v2';
+const EXPLORATION_VERSION = 'rct-exploration-2026-11-23-v3';
 const EXPLORATION_BANK = {};
 const EXPLORATION_GROUPS = [
   { id: 'needs', name: '安全、欲望与亲密', topics: [1, 2, 3, 4, 6, 34], desc: '自我保护、物质、控制、亲密与安全感', color: '#8f6540' },

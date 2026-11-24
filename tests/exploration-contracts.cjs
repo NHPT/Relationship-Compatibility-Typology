@@ -12,7 +12,7 @@ function load() {
       removeItem: key => values.delete(key)
     }
   });
-  const files = ['catalog', ...['needs','bonds','self','meaning','ethics','choices','society','growth','main'].map(group=>`banks/${group}`), 'types', 'profile', 'model'];
+  const files = ['catalog', ...['needs','bonds','self','meaning','ethics','choices','society','growth','main'].map(group=>`banks/${group}`), 'core', 'types', 'profile', 'model'];
   for (const file of files) vm.runInContext(fs.readFileSync(path.join(__dirname, '../js/exploration', file + '.js'), 'utf8'), context);
   return {
     context, values,
@@ -74,13 +74,16 @@ test('中断可继续；改选替换原答案，不增加已答数量', () => {
   assert.equal(env.run("explorationProgress('needs',readExplorationDraft())").answered,1);
   assert.equal(env.run("readExplorationDraft().answers['ex-1-1'].optionId"),'ex-1-1:3');
 });
-test('完整总览保留 48 项具体证据；相同报告不重复保存；分组不混入其他题', () => {
+test('默认报告只使用 44 题，旧主题回答保留但不混入当前报告；相同报告不重复保存', () => {
   const env=load();
   env.run(`globalThis.draft=emptyExplorationDraft();
-    Object.values(EXPLORATION_BANK).flat().forEach(q=>recordExplorationChoice(draft,q.id,q.options[2].id));`);
+    ALL_EXPLORATION_QUESTIONS.forEach(q=>recordExplorationChoice(draft,q.id,q.options[2].id));`);
   const report=env.run('globalThis.report=buildExplorationReport(draft)');
-  assert.equal(report.topicCount,48);
-  assert.equal(report.answered,255);
+  assert.equal(report.total,44);
+  assert.equal(report.answered,44);
+  assert.equal(report.scope,'personal_core');
+  assert.ok(!report.topics.some(topic=>[4,5,21].includes(topic.topicId)));
+  assert.equal(env.run('Object.keys(draft.answers).length'),258);
   assert.equal(report.skipped,0);
   assert.ok(report.topics.every(topic=>topic.facets.every(facet=>facet.status==='answered')));
   env.run('saveExplorationReport(report)');
@@ -91,6 +94,19 @@ test('完整总览保留 48 项具体证据；相同报告不重复保存；分�
     assert.deepEqual(groupReport.topics.map(topic=>topic.topicId),group.topics);
     assert.equal(env.run(`explorationProgress('${group.id}',draft)`).complete,true);
   }
+});
+test('44 题完整覆盖 12 道生活方向与 32 道特征观察，没有性生活或伴侣专项', () => {
+  const env=load();
+  const data=env.run('({questions:PERSONAL_CORE_QUESTIONS,probes:PERSONAL_PROBES,features:PERSONAL_FEATURES})');
+  const ids=new Set(data.questions.map(q=>q.id));
+  assert.equal(data.questions.length,44);
+  assert.equal(ids.size,44);
+  assert.equal(data.probes.length,12);
+  assert.equal(data.features.flatMap(rule=>rule.items).length,32);
+  assert.ok(data.probes.every(probe=>ids.has(probe.questionId)));
+  assert.ok(data.features.every(rule=>rule.items.every(([id])=>ids.has(id))));
+  assert.ok(data.questions.every(q=>q.options.length===4));
+  assert.doesNotMatch(JSON.stringify(data.questions),/性生活|伴侣|婚姻|性忠诚|生育|繁衍/);
 });
 test('存储失败仍保留内存回答；旧版本不混用或覆盖，清空不触及关系记录', () => {
   const env=load();
