@@ -1,6 +1,7 @@
 (function () {
   'use strict';
   const D = window.RCT_DEPTH_DATA, M = D.model, E = window.RCT_ENGINE;
+  const P = window.RCT_PROFILE, V = window.RCT_VISUALS;
   const storage = D.store({
     getItem: key => window.localStorage.getItem(key),
     setItem: (key, value) => window.localStorage.setItem(key, value)
@@ -10,25 +11,10 @@
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const missingNames = { skipped: '未回答', no_experience: '没有相关经历／不适用', uncertain: '不确定', declined: '不愿回答' };
   const modeNames = { personal: '个人深度测评', marriage: '婚恋深度测评' };
-  const typeStates = { incomplete: '观察不足', mixed: '混合模式', unclassified: '未归类', invalid_input: '输入无效' };
-  const riskStates = { boundary_safety_review: '边界或安全行动待核对',
-    repeated_answer_signal: '跨主题重复风险信号', single_or_same_topic_signal: '单项或同主题风险待核对',
-    no_risk_answer_observed: '本次未观察到风险选项' };
   const pairStates = { risk_review: '边界风险待核对', unknown: '资料不足',
     difference: '可协商差异', confirmed_agreement: '明确一致' };
   const legacyKeys = ['rct_exploration_draft_v1', 'rct_exploration_reports_v1', 'rct_history_v1', 'rct_outcomes_v1'];
   const state = { draft: null, report: null, reasons: {}, pair: null, raw: null, importRaw: null };
-  const consequences = {
-    '信息透明': ['相关方可能基于不完整或错误信息作决定。', '核对利益变化、债务与承诺变化时，实际告知了谁、何时告知。'],
-    '承诺履行': ['合作方或伴侣可能突然承担中断、等待和交接成本。', '核对一次真实履约、变更告知与退出善后记录。'],
-    '责任与修复': ['受影响的人可能需要独自处理错误和后果。', '核对发生差错后是否承认责任、采取补救并跟进结果。'],
-    '自主与边界': ['对方的拒绝权、隐私或安全可能受到限制。', '分别确认能否拒绝、离开、保留隐私，以及拒绝后会发生什么。'],
-    '公平互惠': ['他人可能在不知情的情况下失去资源或承担额外成本。', '核对共同资源权限、分配规则及实际知情同意。'],
-    '关怀与照料': ['处于脆弱或困难中的人可能受到羞辱，或无法获得已约定的支持。', '核对真实困难中的有限帮助、照料分工与是否借付出施压。'],
-    '风险管理': ['自己或被要求兜底的人可能承担未经充分评估的损失。', '核对预算、备用安排、退出条件与谁同意承担后果。'],
-    '学习与复盘': ['未核对的错误可能重复，影响共同判断和后续交付。', '核对反馈后的实际修正，以及新证据能否改变做法。'],
-    '冲突与报复': ['对方可能因冲突承受威胁、关系破坏或资源损失。', '核对争执后的暂停、回谈与是否存在报复或破坏。']
-  };
   const domainTasks = [
     '结婚或长期相处的时间预期；变化怎样告知；分开时怎样交接。',
     '彼此接受的忠实约定；哪些接触要告知；哪些隐私保留。',
@@ -175,132 +161,77 @@
       storage.append('reports', report); reportView(report);
     } catch (error) { notices('depth-quiz-status', error.message); }
   }
-  function evidence(rows, label, editable = true) {
-    if (!rows.length) return '<p class="muted">尚无相关有效回答；不能当作中性或良好表现。</p>';
-    return `<details class="report-evidence"><summary>${esc(label)} · ${rows.length} 题</summary>${rows.map(row => {
-      const tags = row.matchingTags || row.tags;
-      return `<article class="evidence-row" data-evidence-id="${esc(row.questionId)}">
-        <p class="source">${esc(row.questionId)} · ${row.mode === 'history' ? '本人回忆 · 未核实' : '情境意向 · 未发生也可能改变'} · ${row.phase === 'core' ? '核心' : '补问'}</p>
-        <p>${esc(row.text)}</p><p class="chosen">所选行动：${esc(row.answer)}</p>
-        <p class="labels">${tags.map(t => `<span class="${M.tags[t].kind === 'risk' ? 'risk-text' : M.tags[t].kind === 'protect' ? 'protect-text' : ''}">${esc(M.tags[t].name)}</span>`).join('；')}</p>
-        ${editable ? `<button type="button" class="question-edit" data-edit-question="${esc(row.questionId)}">回看与修改这道题</button>` : ''}
-      </article>`;
-    }).join('')}</details>`;
+  function dimensions(profile) {
+    return `<section class="report-section"><h3>维度解析</h3><div class="profile-dimensions">${profile.axes.map(a =>
+      `<article class="profile-dimension" id="profile-axis-${esc(a.id)}" tabindex="-1">
+        <div class="dimension-heading"><h4>${esc(a.name)}</h4><span class="dimension-level${a.value === null ? ' unknown' : ''}">${esc(a.heading)}</span></div>
+        <p>${esc(a.description)}</p><p class="dimension-observe">${esc(a.task)}</p></article>`).join('')}</div></section>`;
   }
-  function prototype(type, heading) {
-    return `<article class="prototype-row"><h4>${esc(heading)} ${esc(type.id)} · ${esc(type.name)}</h4>
-      <p>相关主题覆盖 ${type.keyCoverage} / 8；支持 ${type.support.length} / ${type.observed} 个已答机会，描述匹配值 ${type.match === null ? '未知' : type.match.toFixed(2)}；经历支持 ${type.support.filter(r => r.mode === 'history').length} 题；反证 ${type.counter.length} 题。</p>
-      ${evidence(type.support, '查看支持来源')}${type.counter.length ? evidence(type.counter, '查看反证') : ''}</article>`;
+  function attentions(profile) {
+    if (!profile.hasEvidence) return '';
+    return `<section class="report-section profile-attentions"><h3>需要留意的部分</h3>${profile.risks.length
+      ? profile.risks.map(r => `<article class="profile-caution${r.priority ? ' priority' : ''}">
+        <h4>${esc(r.title)}${r.priority ? '<span>优先留意</span>' : ''}</h4><p>${esc(r.description)}</p>
+        <p class="muted">${esc(r.recurrence)}${r.counter ? ' ' + esc(r.counter) : ''}</p></article>`).join('')
+      : '<p class="muted">目前没有明显的风险倾向提示。真实相处中的履约、信息披露和压力下的行动，仍需要持续观察。</p>'}</section>`;
   }
-  function typeSection(classification) {
-    const primary = classification.primary;
-    return `<section class="report-section"><h3>14 类描述摘要</h3>
-      <p>${primary ? `本次主型为 ${esc(primary.id)} ${esc(primary.name)}。` :
-        `${esc(typeStates[classification.status] || '未形成唯一主型')}：现有核心回答不满足唯一主型的显示条件。`}</p>
-      <p class="muted">只使用核心回答归类。匹配值是支持机会比例，不是准确率或未来行为概率；反证不由其他长处抵消。</p>
-      ${primary ? prototype(primary, '主型') : ''}
-      ${classification.secondary ? prototype(classification.secondary, '辅助摘要') : ''}
-      <details class="depth-library"><summary>查看全部 14 原型及未归类原因</summary>
-        ${classification.rows.map(type => {
-          const reason = !type.covered ? '相关或全局覆盖不足' : type.counter.length ? '存在指定反证'
-            : type.support.length < 4 ? '支持题不足' : !type.support.some(r => r.mode === 'history') ? '缺少经历支持'
-            : type.match < M.parameters.typeMinMatch ? '支持比例不足'
-            : type.id !== primary?.id ? '与其他原型的领先差距或排序条件不足' : '达到主型显示条件';
-          return prototype(type, reason + ' · ');
-        }).join('')}
-        <p>显示规则暂定：全局至少 36 主题、关联至少 6 主题达到核心覆盖；至少 4 题支持且含经历；匹配值至少 0.60，无指定反证；领先覆盖充分的次位原型至少 0.15。</p>
-      </details></section>`;
+  function domainDescription(topic) {
+    if (!topic.covered) return '这一领域的信息还不充分，目前不判断相处方式是否一致或稳定。';
+    const names = kind => [...new Set(topic.evidence.flatMap(r => r.tags)
+      .filter(t => M.tags[t].kind === kind).map(t => M.tags[t].name))];
+    const protect = names('protect'), risk = names('risk'), preference = names('preference');
+    return [
+      protect.length ? `呈现的做法包括${protect.join('、')}。` : '持续承担与知情协商的做法还不够突出。',
+      preference.length ? `相处取舍中也呈现${preference.join('、')}的特点。` : '',
+      risk.length ? `需要留意${risk.join('、')}的倾向及其对共同生活的影响。` : ''
+    ].filter(Boolean).join(' ');
   }
-  function signal(indicator) {
-    const risks = indicator.risk, consequence = consequences[indicator.name] || ['需要结合具体情境核对。', '核对一次实际行动及其后果。'];
-    const note = indicator.status === 'repeated_answer_signal'
-      ? (indicator.historyRisk ? '跨主题重复回答中包含自述经历，仍未核实。' : '这些重复风险回答全部是情境意向，不能称为已发生行为。')
-      : indicator.status === 'boundary_safety_review' ? '单题已出现明确边界或安全行动，单列核对，不等待重复阈值。'
-      : '尚不足以称为跨主题重复行为，保留题目条件核对。';
-    return `<article class="signal"><h4>${esc(indicator.name)}<span class="signal-status">${esc(riskStates[indicator.status])}</span></h4>
-      <div class="signal-numbers"><span class="risk-text">风险 ${risks.length} 题 / ${indicator.topicCount} 主题</span>
-        <span class="protect-text">相反保护证据 ${indicator.protect.length} 题</span><span>风险中经历 ${indicator.historyRisk} 题</span></div>
-      <p>${esc(note)}</p><p>触发条件与所选行动：</p>${evidence(risks, '查看完整风险题干、选择与出处')}
-      <p>可能后果：${esc(consequence[0])}</p>
-      ${evidence(indicator.protect, '同指标相反证据')}
-      <p>未知：回答是否与真实反复表现一致、条件变化后怎样行动，当前均未确认。</p>
-      <p>观察任务：${esc(consequence[1])}</p></article>`;
-  }
-  function judgmentSections(summary) {
-    const groups = [
-      ['可靠性与责任', ['信息透明', '承诺履行', '责任与修复', '公平互惠'], '核对实际履约、变更披露、责任补救与知情分配；实际能力和交付质量还需另行观察。'],
-      ['忠诚、利益与边界', ['信息透明', '承诺履行', '自主与边界', '价值取舍'], '收益优先与侵占、隐瞒、违约分别记录。守约意向不能保证未来忠诚；不把合理拒绝与负责退出当作背叛。'],
-      ['创造与做成事情', ['探索偏好', '执行方式', '学习与复盘', '风险管理'], '点子、试验、反馈和推进分别看。真实作品质量、专业能力、资源机会及未来成就仍未观察。']
-    ];
-    return groups.map(([title, names, boundary]) => `<section class="report-section"><h3>${title}</h3><p>${boundary}</p>
-      ${names.map(name => {
-        const i = summary.indicators.find(row => row.name === name);
-        return `<article class="signal"><h4>${esc(name)}</h4><div class="signal-numbers">
-          <span class="protect-text">保护 ${i?.protect.length || 0}</span><span class="risk-text">风险 ${i?.risk.length || 0}</span><span>偏好 ${i?.preference.length || 0}</span></div>
-          ${i ? ['protect', 'risk', 'preference'].filter(kind => i[kind].length).map(kind =>
-            evidence(i[kind], { protect: '保护行动', risk: '风险行动', preference: '价值取舍与做法偏好' }[kind])).join('')
-            : '<p class="muted">尚无该指标的可解释证据。</p>'}</article>`;
-      }).join('')}</section>`).join('');
-  }
-  function topicDisplayName(scope, topic) {
-    if (scope === 'personal' && topic.id === 4) return '自愿与身体边界';
-    if (scope === 'personal' && topic.id === 21) return '长期关系意愿与告知';
-    return topic.name;
-  }
-  function topicsSection(summary) {
-    const minimum = summary.scope === 'personal' ? 2 : 4;
-    const catalog = summary.scope === 'personal' ? M.personalTopics : M.marriageDomains;
-    return `<section class="report-section"><h3>${summary.scope === 'personal' ? '48 主题 · 完整证据' : '12 婚恋领域 · 完整证据'}</h3>
-      <p>达到核心覆盖只表示题目有效，不表示每个子项均被充分测量。没有经历、不确定、不愿回答和未问分别保留。</p>
-      ${summary.topics.map(topic => {
-        const t = catalog.find(x => x.id === topic.id), risk = topic.evidence.filter(r => r.tags.some(tag => M.tags[tag].kind === 'risk'));
-        const protect = topic.evidence.filter(r => r.tags.some(tag => M.tags[tag].kind === 'protect'));
-        return `<details class="topic-row" data-topic="${topic.id}"><summary><strong>${String(topic.id).padStart(2, '0')} ${esc(topicDisplayName(summary.scope, topic))}</strong><span>${topic.core}/${minimum} 核心 · ${topic.history} 经历</span></summary>
-          <p>支持保护行动 ${protect.length} 题；风险行动 ${risk.length} 题；${topic.covered ? '达到最低核心覆盖' : '核心覆盖不足'}。</p>
-          ${summary.scope === 'personal' ? `<p class="muted">原主题：${esc(t.name)}。${esc(t.boundary)}
-            ${[4, 21].includes(topic.id) ? '性忠实、生育、伴侣间照料等在婚恋模式观察，本报告不补填对应分数。' : ''}</p>`
-            : `<p>下一步共同议题：${esc(domainTasks[topic.id - 1])}</p>`}
-          ${evidence(topic.evidence, '展开实际选择、价值取舍与条件')}
-          <div class="topic-gaps"><strong>尚未观察／需要补充</strong><ul>
-            ${topic.missing.map(m => `<li>${esc(m.questionId)}：${esc(missingNames[m.reason])} <button type="button" class="question-edit" data-edit-question="${esc(m.questionId)}">回看该题</button></li>`).join('')}
-            ${topic.unasked.map(id => `<li>${esc(id)}：${D.items.get(id).phase === 'core' ? '核心题尚未回答' : '补充题未问，不作不存在解释'}</li>`).join('')}
-            ${!topic.history ? '<li>没有该主题的有效自述经历。</li>' : ''}
-            <li>长期重复表现、实际后果及另一方是否知情均未核实。</li></ul></div>
-        </details>`;
-      }).join('')}</section>`;
+  function marriageDomains(summary) {
+    return `<section class="report-section"><h3>共同生活中的取舍</h3><div class="profile-domains">${summary.topics.map(t =>
+      `<details class="topic-row"><summary><strong>${esc(t.name)}</strong></summary>
+        <p>${esc(domainDescription(t))}</p><p class="muted">${esc(domainTasks[t.id - 1])}</p></details>`).join('')}</div>
+      <button type="button" class="btn btn-ghost" id="report-open-pair">与另一份婚恋画像对照</button></section>`;
   }
   function reportView(rawReport) {
     try { state.report = D.interpret(rawReport); } catch (error) {
       rawView({ title: error.message, record: rawReport, raw: JSON.stringify(rawReport, null, 2) }); return;
     }
-    const report = state.report, summary = report.derived;
-    const riskSignals = summary.indicators.filter(i => i.risk.length).sort((a, b) =>
-      (a.status === 'boundary_safety_review' ? -1 : 0) - (b.status === 'boundary_safety_review' ? -1 : 0) || b.risk.length - a.risk.length);
-    $('report-mode').textContent = `${modeNames[report.scope]} · 报告快照`;
-    const title = !summary.rows.length ? '尚无可解释证据' : report.scope === 'personal'
-      ? report.classification.primary?.name || typeStates[report.classification.status]
-      : '婚恋中的承诺、共同生活与边界';
-    $('depth-report').innerHTML = `<header class="report-intro"><h2>${esc(title)}</h2>
-      <p>情境题记录意向，经历题记录本人回忆；均未核实。风险、相反证据和未知分开呈现，没有人格或婚姻总分。</p>
-      <p class="report-version">${esc(report.version)} / ${esc(report.engineVersion)} · ${esc(date(report.createdAt))} · ${esc(report.reportId)}</p></header>
-      <div class="coverage-line"><span><strong>${summary.rows.length}</strong>有效回答</span><span><strong>${summary.missing.length}</strong>跳过</span>
-        <span><strong>${summary.coveredTopics}</strong>/${summary.topics.length} 主题核心覆盖</span></div>
-      <section class="report-section"><h3>优先核对的行动证据</h3>
-        ${riskSignals.length ? riskSignals.map(signal).join('') : '<p>本次未观察到风险选项。这只描述已有回答，不能据此确认长期可靠、忠诚或没有隐瞒。</p>'}</section>
-      ${report.scope === 'personal' ? typeSection(report.classification) + judgmentSections(summary)
-        : `<section class="report-section"><h3>婚恋判断的四个层次</h3>
-          <p>长期意愿、忠实约定、实际执行、变化善后分别看；家庭观由持续照料、分工、共同决策与边界组成。生育愿望、牺牲多少或是否维持婚姻都不能替代责任证据。</p>
-          <p>${summary.rows.some(r => r.mode === 'history') ? '已有本人回忆的相处经历，仍缺少另一方确认及长期核验。' : '缺少伴侣间的行为观察。现有情境意向不能证明已经履行。'}</p>
-          <p>逆境中的资源限制与负责退出，需与突然失联、侵占资源、威胁控制分别核对。</p>
-          <button type="button" class="btn btn-ghost" id="report-open-pair">与另一份婚恋报告逐项对照</button></section>`}
-      ${topicsSection(summary)}`;
+    const report = state.report, summary = report.derived, profile = P.present(report), n = profile.narrative;
+    $('report-mode').textContent = modeNames[report.scope];
+    $('depth-report').innerHTML = `<header class="profile-hero">
+      <figure class="profile-emblem${n.symbols.length > 1 ? ' paired' : ''}">
+        <div class="profile-symbols">${n.symbols.length ? n.symbols.map(s => V.animal(s.symbol, s.animal)).join('') : V.pattern()}</div>
+        <figcaption>${esc(n.symbols.map(s => s.animal).join(' · ') || '行为画像')}</figcaption>
+      </figure><div class="profile-intro"><p class="profile-eyebrow">${esc(n.eyebrow)}</p><h2>${esc(n.title)}</h2>
+        <p class="profile-summary">${esc(n.description)}</p>
+        ${n.symbolMeaning ? `<p class="profile-symbol-meaning">${esc(n.symbolMeaning)} · 图案不代表人格优劣</p>` : ''}</div></header>
+      ${n.tension ? `<p class="profile-tension">${esc(n.tension)}</p>` : ''}
+      <section class="report-section profile-radar-section"><h3>你的行为轮廓</h3>
+        <figure class="profile-chart">${V.radar(profile.axes)}<figcaption>${esc(profile.radarNote)}</figcaption></figure>
+        <p class="radar-instruction muted">点击图中维度名称，查看对应解析。</p></section>
+      ${attentions(profile)}${dimensions(profile)}
+      ${profile.preferences.length ? `<section class="report-section"><h3>价值与做事方式</h3>
+        <div class="profile-preferences">${profile.preferences.map(p => `<article><h4>${esc(p.name)}</h4>
+          <p>${esc(p.description)}</p><p class="muted">${esc(p.note)}</p></article>`).join('')}</div></section>` : ''}
+      ${report.scope === 'marriage' ? marriageDomains(summary) : ''}
+      <p class="profile-footnote">画像反映当前自述与情境取舍。长期可靠、忠诚、能力与关系走向，还需结合实际表现理解。</p>`;
     const queue = E.followups(report.scope, report.answers, false);
     const expanded = E.followups(report.scope, report.answers, true);
     $('report-followup').disabled = !expanded.length;
     $('report-followup').textContent = queue.length ? `自动补充观察 · 最多 ${queue.length} 题` : expanded.length ? `继续扩展观察 · 最多 ${expanded.length} 题` : '已完成本题库观察';
-    $('depth-report').querySelectorAll('[data-edit-question]').forEach(b => b.onclick = () => edit(b.dataset.editQuestion));
+    $('depth-report').querySelectorAll('[data-focus-axis]').forEach(label => {
+      const focus = () => {
+        const target = $('profile-axis-' + label.dataset.focusAxis);
+        target.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+        target.focus({ preventScroll: true });
+      };
+      label.onclick = focus;
+      label.onkeydown = event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focus(); }
+      };
+    });
     if ($('report-open-pair')) $('report-open-pair').onclick = pairHub;
-    notices('report-status', '报告只描述本次回答，阈值待真人研究验证。保存与导出独立，分享由本人决定。');
+    notices('report-status');
     show('depth-report');
   }
   function reportDraft() {
@@ -448,9 +379,8 @@
       const agreement = p.agreements.find(g => g.domainId === d.id);
       const responseOptions = '<option value="pending">尚未由本人记录回应</option><option value="accept">本人接受此约定</option><option value="reject">本人不接受／需调整</option>';
       return `<article class="pair-domain" data-pair-domain="${d.id}"><h3>${String(d.id).padStart(2, '0')} ${esc(d.name)}</h3>
-        <p class="muted">A 核心 ${d.coverageA}/4；B 核心 ${d.coverageB}/4。以下都是本人作答，尚未核实。</p>
-        <p>已答同一题中选择不同的有 ${a.evidence.filter(x => b.evidence.some(y => y.questionId === x.questionId && y.optionId !== x.optionId)).length} 题。可逐题讨论条件，选择不同本身不等于冲突。</p>
-        ${evidence(a.evidence, 'A 的实际选择', false)}${evidence(b.evidence, 'B 的实际选择', false)}
+        <div class="pair-profiles"><div><h4>A 的相处倾向</h4><p>${esc(domainDescription(a))}</p></div>
+          <div><h4>B 的相处倾向</h4><p>${esc(domainDescription(b))}</p></div></div>
         <p>共同议题：${esc(domainTasks[d.id - 1])}</p>
         <label class="oc-field"><span>写下双方需要确认的具体约定</span><textarea rows="3" maxlength="2000" data-agreement="${d.id}" placeholder="说明做什么、由谁做、变化时怎样告知">${esc(agreement.statement)}</textarea></label>
         <div class="pair-confirm">
@@ -486,7 +416,7 @@
       const both = g.statement.trim() && [g.partyAResponse, g.partyBResponse].every(r => ['accept', 'reject'].includes(r));
       g.status = both ? 'both_responses_recorded' : 'single_party_statement';
       const condition = d.status === 'risk_review'
-        ? '若隐瞒、强迫或违约的回答在现实中出现，共同决策或安全可能受损。应先核对原题行动、拒绝权、资源权限及实际后果；其他长处不抵消这些风险。'
+        ? '若隐瞒、强迫或违约的倾向在现实中出现，共同决策或安全可能受损。应先观察拒绝权、资源权限及实际后果；其他长处不抵消这些风险。'
         : d.status === 'unknown'
           ? '缺少有效核心回答或双方回应时，不能判断一致，也无法推断关系走向。先补足经历与具体约定。'
           : d.status === 'difference'

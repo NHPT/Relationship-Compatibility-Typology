@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="RCT 人性与婚恋深度测评：48个人主题、14种描述原型、12个婚恋领域。查看具体选择、风险行动、相反证据与未观察内容。">
+  <meta name="description" content="RCT 人性与婚恋深度测评：48个人主题、14种描述原型、12个婚恋领域。用画像描述、维度解析、雷达图与动物象征理解行为倾向。">
   <title>RCT 人性与婚恋深度测评</title>
-  <link rel="stylesheet" href="css/style.css?v=20261124-depth-v2">
-  <link rel="stylesheet" href="css/depth.css?v=20261124-depth-v2">
+  <link rel="stylesheet" href="css/style.css?v=20261124-depth-v3">
+  <link rel="stylesheet" href="css/depth.css?v=20261124-depth-v3">
 </head>
 <body>
-  <main class="app" id="depth-app" data-release="20261124-depth-v2">
+  <main class="app" id="depth-app" data-release="20261124-depth-v3">
     <section id="page-home" class="page active">
       <header class="hero">
         <div class="brand"><span class="logo">RCT</span><div class="brand-text">
@@ -21,7 +21,7 @@
       <div class="mode-cards">
         <button type="button" class="mode-card" id="btn-exploration" data-start="personal" style="--scene-color:var(--green-strong)">
           <span class="mode-kicker">48 主题 / 14 描述原型</span><span class="mode-title">个人深度测评</span>
-          <span class="mode-desc">守约、责任、利益、边界、创造与执行。支持证据与风险行动分别呈现。</span>
+          <span class="mode-desc">守约、责任、利益、边界、创造与执行。用维度解析与雷达图呈现你的行为画像。</span>
           <span class="mode-count">96 题核心 · 自动续答 <span aria-hidden="true">↗</span></span>
         </button>
         <button type="button" class="mode-card" data-scene="love" data-start="marriage" style="--scene-color:var(--green-strong)">
@@ -36,7 +36,7 @@
       </div>
       <p class="home-foot muted">核心答完即可看报告，再按需要自动补问。个人最多 144 题，婚恋最多 72 题；无需选择模块。只在当前浏览器保存，本人决定是否导出和分享。</p>
       <details class="depth-library"><summary>14 类怎样形成，结果怎样使用</summary><div id="type-library"></div>
-        <p class="muted">类型是较细的描述摘要。覆盖不足、前列接近或存在反证时，不强行指定主型。没有类型也能查看全部证据。当前阈值未经过真人研究验证，不能给出背叛概率、终身忠诚保证或未来成就预测。</p>
+        <p class="muted">不同倾向可以同时存在。接近时会描述并存的特点，信息不足时按维度理解；动物图案只是视觉象征。当前模型未经过真人研究验证，不能给出背叛概率、终身忠诚保证或未来成就预测。</p>
       </details>
       <p id="home-status" class="storage-note muted" role="status"></p>
     </section>
@@ -54,7 +54,7 @@
           <button type="button" id="depth-skip" class="btn btn-ghost" aria-pressed="false">跳过本题</button>
           <button type="button" id="depth-next" class="btn" disabled>下一题</button>
         </div>
-        <button type="button" id="depth-stop-followup" class="text-btn hidden">结束补问，查看已有证据</button>
+        <button type="button" id="depth-stop-followup" class="text-btn hidden">结束补问，查看当前画像</button>
         <p id="depth-quiz-status" class="storage-note muted" role="status" aria-live="polite"></p>
       </div>
     </section>
@@ -93,7 +93,7 @@
     </section>
     <section id="page-depth-pair" class="page">
       <div class="quiz-scene-line"><strong>双方婚恋对照</strong><button type="button" class="text-btn" data-home>返回首页</button></div>
-      <h2 class="depth-title">先看实际回答，再谈共同约定</h2>
+      <h2 class="depth-title">理解彼此的相处倾向，确认共同约定</h2>
       <p class="muted">由两人主动提供各自的报告。A、B 是本次代号；同型不等于合适，异型不等于不合适。未确认的共同约定不能算一致。</p>
       <div class="pair-selectors">
         <label class="oc-field"><span>A 的婚恋报告</span><select id="pair-a"></select></label>
@@ -109,9 +109,11 @@
     </section>
     <noscript>本测评需要开启 JavaScript 才能在本地处理回答。</noscript>
   </main>
-  <script src="js/depth/model.js?v=20261124-depth-v2"></script>
-  <script src="js/depth/engine.js?v=20261124-depth-v2"></script>
-  <script src="js/depth/data.js?v=20261124-depth-v2"></script>
-  <script src="js/depth/app.js?v=20261124-depth-v2"></script>
+  <script src="js/depth/model.js?v=20261124-depth-v3"></script>
+  <script src="js/depth/engine.js?v=20261124-depth-v3"></script>
+  <script src="js/depth/data.js?v=20261124-depth-v3"></script>
+  <script src="js/depth/profile.js?v=20261124-depth-v3"></script>
+  <script src="js/depth/visuals.js?v=20261124-depth-v3"></script>
+  <script src="js/depth/app.js?v=20261124-depth-v3"></script>
 </body>
 </html>

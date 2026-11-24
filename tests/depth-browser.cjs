@@ -73,7 +73,9 @@ async function directMarriage(page) {
     assert.equal(Object.hasOwn(personal, 'notes'), false);
     assert.equal(Object.hasOwn(personal, 'consent'), false);
     assert.ok((await page.locator('#depth-report').textContent()).includes('收益优先与侵占'));
-    assert.ok((await page.locator('#depth-report').textContent()).includes('可能后果'));
+    assert.ok((await page.locator('#depth-report').textContent()).includes('维度解析'));
+    assert.equal(await page.locator('#profile-radar').count(), 1);
+    assert.equal(await page.locator('.profile-emblem svg').getAttribute('aria-label'), '鹰象征图案');
     await page.screenshot({ path: path.join(output, 'desktop-personal.png'), fullPage: false });
     const exportedPersonal = await exportJSON(page, '#report-export', 'personal-core.json');
     assert.equal(Object.keys(exportedPersonal.answers).length, 96);
